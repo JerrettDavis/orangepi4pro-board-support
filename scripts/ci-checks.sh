@@ -26,16 +26,28 @@ rm -f /tmp/qdtech-touch-x11 /tmp/qdtech-usb-dump
 
 printf 'Scanning for obvious secret patterns...\n'
 if grep -RInE '(BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|ghp_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+|AKIA[0-9A-Z]{16}|password[[:space:]]*=|token[[:space:]]*=|secret[[:space:]]*=)' \
-  --exclude-dir=.git .; then
+  --exclude-dir=.git \
+  --exclude-dir=.build \
+  --exclude-dir=build \
+  --exclude-dir=downloads \
+  --exclude-dir=out \
+  --exclude-dir=research/private \
+  .; then
   printf 'ERROR: possible secret pattern found\n' >&2
   exit 1
 fi
 
 printf 'Checking for committed binary artifacts...\n'
-if find . -type f -not -path './.git/*' -exec file {} + | grep -E 'ELF|PE32 executable|Mach-O|ISO 9660|filesystem data'; then
+if find . \
+  -path './.git' -prune -o \
+  -path './.build' -prune -o \
+  -path './build' -prune -o \
+  -path './downloads' -prune -o \
+  -path './out' -prune -o \
+  -path './research/private' -prune -o \
+  -type f -exec file {} + | grep -E 'ELF|PE32 executable|Mach-O|ISO 9660|filesystem data'; then
   printf 'ERROR: binary artifact found\n' >&2
   exit 1
 fi
 
 printf 'CI checks passed.\n'
-

@@ -10,3 +10,7 @@ manifest. Board-support-specific pins verified 2026-07-02:
 | Vendor U-Boot BSP | https://github.com/orangepi-xunlong/u-boot-orangepi.git | `v2018.05-sun60iw2` | `b791be842935b27268ae3d00e943a9075495f30a` |
 | NVMe Gen1 workaround | https://github.com/CarterPerez-dev/orangepi-4-pro-nvme-fix.git | `main` | `4874dcda247f69217c1ca8559d6f5f03e485f40e` |
 
+Vendor U-Boot build validation on this board produced `u-boot.bin` and
+`u-boot-sun60iw2p1.bin` from `sun60iw2p1_t736_defconfig`. The shipped
+`scripts/sunxi_ubootools` helper is not executable on the ARM host, so complete
+Allwinner `.fex` boot-package generation remains unresolved.

@@ -10,6 +10,8 @@ committing large vendor source trees or binary images.
 
 - `configs/kernel/orangepi4pro-cyberdeck.fragment`: required kernel options.
 - `configs/dts/`: DTS patch workflow and optional NVMe Gen1 notes.
+- `configs/u-boot/orangepi4pro-bootmenu.fragment`: experimental vendor U-Boot
+  menu/keyboard fragment.
 - `packages/qdtech-touch-x11/`: current X11/libusb touch fallback copied from
   `/home/orangepi/touchscreen-fix-src`.
 - `scripts/`: dry-run board support validation and capture helpers.
@@ -45,6 +47,13 @@ Run before pushing:
 scripts/ci-checks.sh
 scripts/validate-board-support.sh
 ```
+
+## Vendor U-Boot
+
+The near-term graphical-selector path is not GRUB EFI. The current vendor
+loader is a 32-bit ARM U-Boot and the installed package has EFI loader support
+disabled. See `docs/vendor-u-boot-bootmenu.md` for the reproducible, no-flash
+build wrapper and the current bootmenu findings.
 
 ## Releases
 
