@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=QDtech Touch X11 Bridge
+Exec=/usr/local/bin/qdtech-touch-x11
+X-GNOME-Autostart-enabled=true
+Hidden=false

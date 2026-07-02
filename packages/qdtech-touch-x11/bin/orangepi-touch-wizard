@@ -1,0 +1,225 @@
+#!/usr/bin/env python3
+import os
+import signal
+import subprocess
+import sys
+import threading
+import time
+
+import gi
+import libevdev
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+from gi.repository import Gdk, GLib, Gtk
+
+
+DEVICE = "/dev/input/by-id/usb-QDtech_MPI7003-event-if00"
+CONF = "/etc/X11/xorg.conf.d/99-qdtech-mpi7003-touchscreen.conf"
+
+
+CSS = b"""
+window { background: #0b0f14; }
+.title { color: #ffffff; font: 700 28px Sans; }
+.hint { color: #d7dde6; font: 20px Sans; }
+.target { background: #ffcc33; border-radius: 0; }
+.target-label { color: #101820; font: 700 34px Sans; }
+.log { color: #b9c2cf; font: 16px Monospace; }
+"""
+
+
+class RawReader:
+    def __init__(self, path):
+        self.path = os.path.realpath(path)
+        self.lock = threading.Lock()
+        self.x = None
+        self.y = None
+        self.touch = 0
+        self.events = 0
+        self.running = True
+        self.thread = threading.Thread(target=self._run, daemon=True)
+        self.thread.start()
+
+    def _run(self):
+        try:
+            with open(self.path, "rb") as fd:
+                dev = libevdev.Device(fd)
+                for event in dev.events():
+                    if not self.running:
+                        break
+                    with self.lock:
+                        self.events += 1
+                        if event.code == libevdev.EV_ABS.ABS_X:
+                            self.x = event.value
+                        elif event.code == libevdev.EV_ABS.ABS_Y:
+                            self.y = event.value
+                        elif event.code == libevdev.EV_KEY.BTN_TOUCH:
+                            self.touch = event.value
+        except Exception as exc:
+            with self.lock:
+                self.error = str(exc)
+
+    def snapshot(self):
+        with self.lock:
+            return self.x, self.y, self.touch, self.events
+
+    def stop(self):
+        self.running = False
+
+
+class Wizard(Gtk.Window):
+    def __init__(self):
+        super().__init__(title="Touchscreen Calibration Wizard")
+        self.set_decorated(False)
+        self.fullscreen()
+        self.set_keep_above(True)
+        self.stick()
+        self.add_events(
+            Gdk.EventMask.BUTTON_PRESS_MASK
+            | Gdk.EventMask.BUTTON_RELEASE_MASK
+            | Gdk.EventMask.TOUCH_MASK
+            | Gdk.EventMask.POINTER_MOTION_MASK
+            | Gdk.EventMask.KEY_PRESS_MASK
+        )
+        self.connect("key-press-event", self.on_key)
+        self.connect("button-press-event", self.on_press)
+        self.connect("touch-event", self.on_touch)
+        self.connect("delete-event", lambda *_: True)
+
+        provider = Gtk.CssProvider()
+        provider.load_from_data(CSS)
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+
+        self.screen_w = Gdk.Screen.get_default().get_width()
+        self.screen_h = Gdk.Screen.get_default().get_height()
+        self.margin = max(70, min(self.screen_w, self.screen_h) // 9)
+        self.target_size = max(180, min(self.screen_w, self.screen_h) // 3)
+        self.points = [
+            ("top_left", self.margin, self.margin, "1/4 TOP LEFT"),
+            ("top_right", self.screen_w - self.margin, self.margin, "2/4 TOP RIGHT"),
+            ("bottom_right", self.screen_w - self.margin, self.screen_h - self.margin, "3/4 BOTTOM RIGHT"),
+            ("bottom_left", self.margin, self.screen_h - self.margin, "4/4 BOTTOM LEFT"),
+            ("center", self.screen_w // 2, self.screen_h // 2, "CHECK CENTER"),
+        ]
+        self.index = 0
+        self.captures = []
+        self.raw = RawReader(DEVICE if os.path.exists(DEVICE) else "/dev/input/event1")
+
+        self.overlay = Gtk.Overlay()
+        self.add(self.overlay)
+
+        self.fixed = Gtk.Fixed()
+        self.overlay.add(self.fixed)
+
+        self.title = Gtk.Label()
+        self.title.get_style_context().add_class("title")
+        self.fixed.put(self.title, 24, 22)
+
+        self.hint = Gtk.Label(label="Tap the yellow target. Hold briefly, then lift. Press Esc to quit.")
+        self.hint.get_style_context().add_class("hint")
+        self.fixed.put(self.hint, 24, 62)
+
+        self.log = Gtk.Label()
+        self.log.get_style_context().add_class("log")
+        self.log.set_xalign(0)
+        self.log.set_yalign(1)
+        self.fixed.put(self.log, 24, self.screen_h - 150)
+
+        self.target = Gtk.EventBox()
+        self.target.get_style_context().add_class("target")
+        self.target.set_size_request(self.target_size, self.target_size)
+        self.target_label = Gtk.Label()
+        self.target_label.get_style_context().add_class("target-label")
+        self.target_label.set_justify(Gtk.Justification.CENTER)
+        self.target_label.set_line_wrap(True)
+        self.target.add(self.target_label)
+        self.fixed.put(self.target, 0, 0)
+
+        GLib.timeout_add(250, self.refresh_status)
+        self.move_target()
+
+    def on_key(self, _widget, event):
+        if event.keyval == Gdk.KEY_Escape:
+            self.raw.stop()
+            Gtk.main_quit()
+            return True
+        return False
+
+    def on_touch(self, _widget, event):
+        if event.type == Gdk.EventType.TOUCH_BEGIN:
+            self.capture(event.x_root, event.y_root, "touch")
+            return True
+        return False
+
+    def on_press(self, _widget, event):
+        self.capture(event.x_root, event.y_root, "button")
+        return True
+
+    def capture(self, gui_x, gui_y, source):
+        if self.index >= len(self.points):
+            return
+        key, target_x, target_y, label = self.points[self.index]
+        raw_x, raw_y, raw_touch, raw_events = self.raw.snapshot()
+        self.captures.append(
+            {
+                "key": key,
+                "target": (target_x, target_y),
+                "gui": (round(gui_x), round(gui_y)),
+                "raw": (raw_x, raw_y),
+                "raw_touch": raw_touch,
+                "raw_events": raw_events,
+                "source": source,
+            }
+        )
+        self.index += 1
+        if self.index >= len(self.points):
+            self.finish()
+        else:
+            self.move_target()
+
+    def move_target(self):
+        key, x, y, label = self.points[self.index]
+        left = min(max(0, x - self.target_size // 2), self.screen_w - self.target_size)
+        top = min(max(0, y - self.target_size // 2), self.screen_h - self.target_size)
+        self.fixed.move(self.target, left, top)
+        self.title.set_text(f"Touchscreen calibration: {label}")
+        self.target_label.set_text(label)
+        self.refresh_status()
+
+    def refresh_status(self):
+        raw_x, raw_y, raw_touch, raw_events = self.raw.snapshot()
+        rows = [
+            f"screen={self.screen_w}x{self.screen_h} raw=({raw_x},{raw_y}) touch={raw_touch} raw_events={raw_events}",
+        ]
+        for c in self.captures[-5:]:
+            rows.append(
+                f"{c['key']}: target={c['target']} gui={c['gui']} raw={c['raw']} source={c['source']} events={c['raw_events']}"
+            )
+        self.log.set_text("\n".join(rows))
+        return True
+
+    def finish(self):
+        self.raw.stop()
+        print("=== touchscreen wizard captures ===")
+        for c in self.captures:
+            print(
+                f"{c['key']} target={c['target'][0]},{c['target'][1]} "
+                f"gui={c['gui'][0]},{c['gui'][1]} raw={c['raw'][0]},{c['raw'][1]} "
+                f"source={c['source']} raw_events={c['raw_events']}"
+            )
+        self.title.set_text("Calibration capture complete")
+        self.target_label.set_text("DONE")
+        self.hint.set_text("Capture complete. You can press Esc. Codex will inspect the results.")
+        GLib.timeout_add_seconds(2, Gtk.main_quit)
+
+
+def main():
+    win = Wizard()
+    win.show_all()
+    Gtk.main()
+
+
+if __name__ == "__main__":
+    main()

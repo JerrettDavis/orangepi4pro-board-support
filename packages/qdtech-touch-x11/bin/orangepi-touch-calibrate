@@ -1,0 +1,319 @@
+#!/usr/bin/env python3
+import argparse
+import os
+import re
+import signal
+import subprocess
+import sys
+import time
+
+import libevdev
+
+
+DEVICE_CANDIDATES = [
+    "/dev/input/by-id/usb-QDtech_MPI7003-event-if00",
+    "/dev/input/event1",
+]
+
+
+def run(args, **kwargs):
+    return subprocess.run(args, text=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs)
+
+
+def screen_size():
+    env = xenv()
+    out = run(["xrandr", "--query"], env=env).stdout
+    match = re.search(r"\bcurrent\s+(\d+)\s+x\s+(\d+)", out)
+    if not match:
+        raise RuntimeError("Could not read screen size from xrandr")
+    return int(match.group(1)), int(match.group(2))
+
+
+def xenv():
+    env = os.environ.copy()
+    env.setdefault("DISPLAY", ":0")
+    env.setdefault("XAUTHORITY", "/home/orangepi/.Xauthority")
+    return env
+
+
+def find_device(path_arg):
+    if path_arg:
+        return path_arg
+    for path in DEVICE_CANDIDATES:
+        if os.path.exists(path):
+            return os.path.realpath(path)
+    raise RuntimeError("Could not find QDtech MPI7003 input device")
+
+
+def overlay_main(text, corner):
+    import gi
+
+    gi.require_version("Gtk", "3.0")
+    gi.require_version("Gdk", "3.0")
+    from gi.repository import Gdk, Gtk
+
+    win = Gtk.Window(type=Gtk.WindowType.TOPLEVEL)
+    win.set_decorated(False)
+    win.set_keep_above(True)
+    win.fullscreen()
+    win.stick()
+    win.set_title("Touchscreen Calibration")
+    win.connect("delete-event", lambda *_: True)
+    win.connect("button-press-event", lambda *_: True)
+    win.connect("touch-event", lambda *_: True)
+
+    provider = Gtk.CssProvider()
+    provider.load_from_data(b"""
+        window { background: #101820; }
+        .target { background: #f5c542; color: #101820; border-radius: 0; }
+        .target-label { font: 700 38px Sans; }
+        .hint { color: #f7f7f7; font: 24px Sans; }
+    """)
+    Gtk.StyleContext.add_provider_for_screen(
+        Gdk.Screen.get_default(),
+        provider,
+        Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+    )
+
+    root = Gtk.Overlay()
+    win.add(root)
+
+    shade = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+    shade.set_halign(Gtk.Align.FILL)
+    shade.set_valign(Gtk.Align.FILL)
+    shade.set_margin_top(0)
+    shade.set_margin_bottom(0)
+    shade.set_margin_start(0)
+    shade.set_margin_end(0)
+    root.add(shade)
+
+    hint = Gtk.Label(label="Touch and hold the yellow block for about one second, then lift.")
+    hint.get_style_context().add_class("hint")
+    hint.set_halign(Gtk.Align.CENTER)
+    hint.set_valign(Gtk.Align.CENTER)
+    root.add_overlay(hint)
+
+    target = Gtk.EventBox()
+    target.get_style_context().add_class("target")
+    target.set_size_request(420, 240)
+    label = Gtk.Label(label=text)
+    label.get_style_context().add_class("target-label")
+    label.set_line_wrap(True)
+    label.set_justify(Gtk.Justification.CENTER)
+    label.set_margin_top(24)
+    label.set_margin_bottom(24)
+    label.set_margin_start(24)
+    label.set_margin_end(24)
+    target.add(label)
+
+    valign = Gtk.Align.START if "top" in corner else Gtk.Align.END
+    halign = Gtk.Align.START if "left" in corner else Gtk.Align.END
+    target.set_halign(halign)
+    target.set_valign(valign)
+    target.set_margin_top(0 if valign == Gtk.Align.START else 24)
+    target.set_margin_bottom(0 if valign == Gtk.Align.END else 24)
+    target.set_margin_start(0 if halign == Gtk.Align.START else 24)
+    target.set_margin_end(0 if halign == Gtk.Align.END else 24)
+    root.add_overlay(target)
+
+    win.show_all()
+    Gtk.main()
+
+
+def read_tap(device_path, prompt, corner):
+    overlay = subprocess.Popen(
+        [sys.executable, os.path.abspath(__file__), "--overlay", prompt, "--corner", corner],
+        env=xenv(),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    samples = []
+    touching = False
+    saw_touch_down = False
+    fresh_x = False
+    fresh_y = False
+    start = time.monotonic()
+    last_x = None
+    last_y = None
+
+    try:
+        with open(device_path, "rb") as fd:
+            dev = libevdev.Device(fd)
+            for event in dev.events():
+                if time.monotonic() - start > 45:
+                    raise TimeoutError("Timed out waiting for touch input")
+
+                if event.code == libevdev.EV_ABS.ABS_X:
+                    last_x = event.value
+                    fresh_x = True
+                elif event.code == libevdev.EV_ABS.ABS_Y:
+                    last_y = event.value
+                    fresh_y = True
+                elif event.code == libevdev.EV_KEY.BTN_TOUCH:
+                    touching = event.value == 1
+                    if touching:
+                        saw_touch_down = True
+                    if not touching and samples:
+                        break
+                    if not touching:
+                        fresh_x = False
+                        fresh_y = False
+
+                if (
+                    event.code == libevdev.EV_SYN.SYN_REPORT
+                    and touching
+                    and saw_touch_down
+                    and (fresh_x or fresh_y)
+                    and last_x is not None
+                    and last_y is not None
+                ):
+                    samples.append((last_x, last_y))
+                    fresh_x = False
+                    fresh_y = False
+    finally:
+        try:
+            overlay.send_signal(signal.SIGTERM)
+            overlay.wait(timeout=1)
+        except Exception:
+            try:
+                overlay.kill()
+            except Exception:
+                pass
+
+    if not samples:
+        raise RuntimeError("No live touch coordinate samples captured")
+
+    # Drop the first couple of samples because some panels report the previous edge
+    # position immediately before the finger settles.
+    stable = samples[2:] if len(samples) > 4 else samples
+    x = round(sum(p[0] for p in stable) / len(stable))
+    y = round(sum(p[1] for p in stable) / len(stable))
+    if x == 1024 and y == 600:
+        raise RuntimeError(
+            "Touch controller only reported the cached bottom-right coordinate "
+            "(1024,600). Check the USB touch cable/controller before calibrating."
+        )
+    return x, y
+
+
+def compute_calibration(points, width, height, margin):
+    left_x = (points["top_left"][0] + points["bottom_left"][0]) / 2
+    right_x = (points["top_right"][0] + points["bottom_right"][0]) / 2
+    top_y = (points["top_left"][1] + points["top_right"][1]) / 2
+    bottom_y = (points["bottom_left"][1] + points["bottom_right"][1]) / 2
+
+    target_left = margin
+    target_right = width - margin
+    target_top = margin
+    target_bottom = height - margin
+
+    x_scale = (right_x - left_x) / (target_right - target_left)
+    y_scale = (bottom_y - top_y) / (target_bottom - target_top)
+
+    min_x = round(left_x - target_left * x_scale)
+    max_x = round(min_x + width * x_scale)
+    min_y = round(top_y - target_top * y_scale)
+    max_y = round(min_y + height * y_scale)
+
+    if max_x <= min_x or max_y <= min_y:
+        raise RuntimeError(f"Invalid calibration computed: {min_x} {max_x} {min_y} {max_y}")
+
+    return min_x, max_x, min_y, max_y
+
+
+def write_xorg_config(calibration):
+    min_x, max_x, min_y, max_y = calibration
+    body = f'''Section "InputClass"
+    Identifier "QDtech MPI7003 Touchscreen"
+    MatchUSBID "0484:5750"
+    MatchIsTouchscreen "on"
+    Driver "evdev"
+    Option "Mode" "Absolute"
+    Option "Calibration" "{min_x} {max_x} {min_y} {max_y}"
+    Option "Emulate3Buttons" "false"
+    Option "EmulateThirdButton" "false"
+EndSection
+'''
+    path = "/etc/X11/xorg.conf.d/99-qdtech-mpi7003-touchscreen.conf"
+    tmp = f"{path}.tmp"
+    with open(tmp, "w", encoding="ascii") as f:
+        f.write(body)
+    os.chown(tmp, 0, 0)
+    os.chmod(tmp, 0o644)
+    os.replace(tmp, path)
+    old = "/etc/X11/xorg.conf.d/99-odtech-touchscreen.conf"
+    if os.path.exists(old):
+        os.rename(old, old + ".disabled")
+    return path
+
+
+def apply_live(calibration):
+    min_x, max_x, min_y, max_y = calibration
+    names = run(["xinput", "list", "--name-only"], env=xenv()).stdout.splitlines()
+    name = next((n for n in names if "MPI7003" in n or "Touchscreen" in n), None)
+    if not name:
+        return False
+    subprocess.run(
+        ["xinput", "set-prop", name, "Evdev Axis Calibration", str(min_x), str(max_x), str(min_y), str(max_y)],
+        env=xenv(),
+        check=False,
+    )
+    return True
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Finger-friendly QDtech MPI7003 touchscreen calibrator")
+    parser.add_argument("--device", help="input event device path")
+    parser.add_argument("--no-write", action="store_true", help="print calibration but do not write Xorg config")
+    parser.add_argument("--overlay", help=argparse.SUPPRESS)
+    parser.add_argument("--corner", help=argparse.SUPPRESS)
+    args = parser.parse_args()
+
+    if args.overlay:
+        overlay_main(args.overlay, args.corner or "top_left")
+        return 0
+
+    device = find_device(args.device)
+    width, height = screen_size()
+    margin = max(48, min(width, height) // 10)
+
+    prompts = [
+        ("top_left", "1/4 TOP LEFT", "top_left"),
+        ("top_right", "2/4 TOP RIGHT", "top_right"),
+        ("bottom_right", "3/4 BOTTOM RIGHT", "bottom_right"),
+        ("bottom_left", "4/4 BOTTOM LEFT", "bottom_left"),
+    ]
+
+    print(f"Device: {device}")
+    print(f"Screen: {width}x{height}, target margin: {margin}px")
+
+    points = {}
+    for key, prompt, corner in prompts:
+        points[key] = read_tap(device, prompt, corner)
+        print(f"{key}: raw {points[key][0]} {points[key][1]}")
+        time.sleep(0.4)
+
+    calibration = compute_calibration(points, width, height, margin)
+    print(f"Calibration: {calibration[0]} {calibration[1]} {calibration[2]} {calibration[3]}")
+
+    if args.no_write:
+        return 0
+
+    if os.geteuid() != 0:
+        print("Re-run with sudo to write /etc/X11/xorg.conf.d.", file=sys.stderr)
+        return 2
+
+    path = write_xorg_config(calibration)
+    apply_live(calibration)
+    print(f"Wrote {path}")
+    print("Restart lightdm or reboot to guarantee the persistent calibration is active.")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except Exception as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        raise SystemExit(1)

@@ -1,0 +1,13 @@
+*.dtb
+*.dtbo
+*.img
+*.log
+*.o
+*.ko
+*.tmp
+packages/qdtech-touch-x11/bin/qdtech-touch-x11
+packages/qdtech-touch-x11/bin/qdtech-usb-dump
+build/
+downloads/
+out/
+research/private/

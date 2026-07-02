@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export DISPLAY="${DISPLAY:-:0}"
+export XAUTHORITY="${XAUTHORITY:-/home/orangepi/.Xauthority}"
+
+LOG="${HOME:-/home/orangepi}/.local/state/fix-touchscreen.log"
+mkdir -p "$(dirname "$LOG")"
+
+{
+  echo "=== $(date -Is) ==="
+
+  output="$(xrandr --query | awk '/ connected/{print $1; exit}')"
+  touch_name="$(xinput list --name-only | grep -iE 'QDtech MPI7003|MPI7003|touchscreen' | head -n 1 || true)"
+
+  echo "Output: ${output:-missing}"
+  echo "Touch: ${touch_name:-missing}"
+
+  if [ -n "$output" ] && [ -n "$touch_name" ]; then
+    xinput set-prop "$touch_name" "Coordinate Transformation Matrix" 1 0 0 0 1 0 0 0 1 || true
+    xinput map-to-output "$touch_name" "$output" || true
+    xinput list-props "$touch_name" | grep -iE 'matrix|calibration|device node|evdev|libinput' || true
+  fi
+} >> "$LOG" 2>&1

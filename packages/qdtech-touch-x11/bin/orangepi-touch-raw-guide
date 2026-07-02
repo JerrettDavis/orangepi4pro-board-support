@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+import gi
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+from gi.repository import Gdk, GLib, Gtk
+
+CSS = b"""
+window { background: #0b0f14; }
+.title { color: #ffffff; font: 700 30px Sans; }
+.hint { color: #d7dde6; font: 22px Sans; }
+.target { background: #ffcc33; border-radius: 0; }
+.label { color: #101820; font: 700 40px Sans; }
+"""
+
+
+class Guide(Gtk.Window):
+    def __init__(self):
+        super().__init__(title="Raw Touch Capture Guide")
+        self.set_decorated(False)
+        self.fullscreen()
+        self.set_keep_above(True)
+        self.connect("key-press-event", self.on_key)
+
+        provider = Gtk.CssProvider()
+        provider.load_from_data(CSS)
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+
+        screen = Gdk.Screen.get_default()
+        self.w = screen.get_width()
+        self.h = screen.get_height()
+        margin = max(70, min(self.w, self.h) // 9)
+        self.size = max(210, min(self.w, self.h) // 3)
+        self.points = [
+            ("TOP LEFT", margin, margin),
+            ("TOP RIGHT", self.w - margin, margin),
+            ("CENTER", self.w // 2, self.h // 2),
+            ("BOTTOM LEFT", margin, self.h - margin),
+            ("BOTTOM RIGHT", self.w - margin, self.h - margin),
+        ]
+        self.index = 0
+
+        self.fixed = Gtk.Fixed()
+        self.add(self.fixed)
+
+        self.title = Gtk.Label(label="Raw USB touch capture")
+        self.title.get_style_context().add_class("title")
+        self.fixed.put(self.title, 24, 24)
+
+        self.hint = Gtk.Label(label="Tap and hold each yellow square while it is shown. It advances every 5 seconds.")
+        self.hint.get_style_context().add_class("hint")
+        self.fixed.put(self.hint, 24, 68)
+
+        self.target = Gtk.EventBox()
+        self.target.get_style_context().add_class("target")
+        self.target.set_size_request(self.size, self.size)
+        self.label = Gtk.Label()
+        self.label.get_style_context().add_class("label")
+        self.label.set_line_wrap(True)
+        self.label.set_justify(Gtk.Justification.CENTER)
+        self.target.add(self.label)
+        self.fixed.put(self.target, 0, 0)
+
+        self.move_target()
+        GLib.timeout_add_seconds(5, self.next_target)
+
+    def on_key(self, _widget, event):
+        if event.keyval == Gdk.KEY_Escape:
+            Gtk.main_quit()
+            return True
+        return False
+
+    def move_target(self):
+        name, x, y = self.points[self.index]
+        self.label.set_text(f"{self.index + 1}/5\n{name}")
+        left = min(max(0, x - self.size // 2), self.w - self.size)
+        top = min(max(0, y - self.size // 2), self.h - self.size)
+        self.fixed.move(self.target, left, top)
+
+    def next_target(self):
+        self.index += 1
+        if self.index >= len(self.points):
+            Gtk.main_quit()
+            return False
+        self.move_target()
+        return True
+
+
+win = Guide()
+win.show_all()
+Gtk.main()

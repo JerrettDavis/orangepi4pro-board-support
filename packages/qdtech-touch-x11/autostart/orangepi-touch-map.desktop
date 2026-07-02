@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Map QDtech Touchscreen
+Exec=/usr/local/bin/orangepi-touch-map
+X-GNOME-Autostart-enabled=false
+Hidden=true
