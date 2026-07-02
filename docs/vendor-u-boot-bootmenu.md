@@ -93,6 +93,16 @@ The installer backs up the SD bootloader range before writing and verifies the
 written bytes. It does not write boot0, NVMe, SPI/MTD, partitions, filesystems,
 or firmware.
 
+Prepare or refresh the script-first package candidate without installing it:
+
+```bash
+scripts/prepare-sd-bootmenu-package.sh
+```
+
+The prep script is file-only. It validates that the U-Boot artifact contains
+`run scan_dev_for_scripts; run scan_dev_for_extlinux` and writes the candidate
+under `/var/cache/orangepi4pro-images/build/boot-package-candidates/`.
+
 ## Menu Fragment
 
 `configs/u-boot/orangepi4pro-bootmenu.fragment` enables:
