@@ -33,8 +33,24 @@ Relevant vendor-source findings:
 Implication:
 
 The U-Boot selector is functionally usable, but the deck display path is not
-yet a reliable U-Boot console. The next safe visual selector design should use
-either a boot-package early-logo replacement or a small U-Boot-side display
-patch that draws directly to the already initialized framebuffer. It should be
-tested on a recovery SD first, with serial logs captured, before touching the
-primary SD bootloader package again.
+yet a reliable U-Boot console. The next safe visual selector design should stay
+inside the vendor early-logo path or use a small U-Boot-side display patch that
+draws directly to the already initialized framebuffer. Do not call
+`sunxi_show_bmp` from `boot.scr`.
+
+Current candidate:
+
+- `scripts/generate-uboot-selector-logo.py` writes a deterministic replacement
+  `drivers/video/drm/boot_bmp.h` before compiling U-Boot.
+- `scripts/build-vendor-uboot.sh --selector-logo --clean` builds the
+  script-first bootmenu U-Boot with that embedded selector image.
+- The generated selector BMP is 320 x 240 x 24-bit and 230454 bytes, so it is
+  comfortably below the vendor logo decompression buffer size.
+- The file-only SD boot-package candidate is
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-bootmenu-scriptfirst-selector-logo.fex`.
+- Candidate SHA-256:
+  `bad9dc0a68dd1c047982c85f13192a8759c16298f592785f18db1d8f74971007`.
+
+This candidate still needs a recovery-SD boot test. It is intended to make the
+boot window visibly identifiable first; actual text-menu rendering still
+depends on whether U-Boot's console backend reaches the panel.

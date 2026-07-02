@@ -11,6 +11,7 @@ work_dir=${WORK_DIR:-"$build_root/work"}
 artifact_dir=${ARTIFACT_DIR:-"$build_root/artifacts"}
 fragment=${FRAGMENT:-"$repo_root/configs/u-boot/orangepi4pro-bootmenu.fragment"}
 bootmenu_patch=${BOOTMENU_PATCH:-"$repo_root/configs/u-boot/0001-distro-scan-scripts-before-extlinux.patch"}
+selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
 cross_compile=${CROSS_COMPILE:-arm-linux-gnueabi-}
 jobs=${JOBS:-$(nproc)}
 defconfig=${DEFCONFIG:-sun60iw2p1_t736_defconfig}
@@ -19,7 +20,7 @@ usage() {
   cat <<'USAGE'
 Build the Orange Pi vendor U-Boot tree for sun60iw2 without flashing anything.
 
-Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu] [--clean]
+Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu] [--selector-logo] [--clean]
 
 Environment overrides:
   SOURCE_DIR       Existing local vendor tree. Default:
@@ -31,6 +32,8 @@ Environment overrides:
   CROSS_COMPILE    Toolchain prefix. Default: arm-linux-gnueabi-
   DTC              Device tree compiler. Default: /usr/bin/dtc
   JOBS             make -j value. Default: nproc
+  SELECTOR_LOGO_GENERATOR
+                   Generator for embedded boot_bmp.h selector image.
 
 The script writes only under BUILD_ROOT. It does not install, dd, flash SPI,
 or write boot sectors.
@@ -39,6 +42,7 @@ USAGE
 
 mode=bootmenu
 clean=false
+selector_logo=false
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --baseline)
@@ -46,6 +50,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --bootmenu)
       mode=bootmenu
+      ;;
+    --selector-logo)
+      mode=bootmenu
+      selector_logo=true
       ;;
     --clean)
       clean=true
@@ -129,9 +137,21 @@ if [ "$mode" = bootmenu ]; then
   make "${make_common[@]}" olddefconfig
 fi
 
+artifact_mode=$mode
+if [ "$selector_logo" = true ]; then
+  if [ ! -x "$selector_logo_generator" ]; then
+    printf 'ERROR: selector logo generator not executable: %s\n' "$selector_logo_generator" >&2
+    exit 1
+  fi
+  "$selector_logo_generator" \
+    --output "$work_dir/drivers/video/drm/boot_bmp.h" \
+    --bmp-output "$artifact_dir/bootmenu-selector-logo/selector-boot.bmp"
+  artifact_mode=bootmenu-selector-logo
+fi
+
 make "${make_common[@]}" -j"$jobs"
 
-mkdir -p "$artifact_dir/$mode"
+mkdir -p "$artifact_dir/$artifact_mode"
 for artifact in \
   u-boot \
   u-boot.bin \
@@ -142,22 +162,23 @@ for artifact in \
   u-boot.cfg \
   u-boot.cfg.configs; do
   if [ -e "$work_dir/$artifact" ]; then
-    cp -a "$work_dir/$artifact" "$artifact_dir/$mode/"
+    cp -a "$work_dir/$artifact" "$artifact_dir/$artifact_mode/"
   fi
 done
 
 grep -E 'CONFIG_(CMD_BOOTMENU|AUTOBOOT_MENU_SHOW|USB_KEYBOARD|SYS_USB_EVENT_POLL|DM_KEYBOARD|EFI_LOADER|BOOTDELAY)=' \
-  "$work_dir/.config" > "$artifact_dir/$mode/config-summary.txt" || true
+  "$work_dir/.config" > "$artifact_dir/$artifact_mode/config-summary.txt" || true
 
-cat > "$artifact_dir/$mode/SOURCE.txt" <<EOF
+cat > "$artifact_dir/$artifact_mode/SOURCE.txt" <<EOF
 url=$source_url
 branch=$source_branch
 commit=$source_commit
 defconfig=$defconfig
 mode=$mode
+selector_logo=$selector_logo
 cross_compile=$cross_compile
 dtc=${DTC:-/usr/bin/dtc}
 EOF
 
-printf 'Built vendor U-Boot artifacts in %s/%s\n' "$artifact_dir" "$mode"
+printf 'Built vendor U-Boot artifacts in %s/%s\n' "$artifact_dir" "$artifact_mode"
 printf 'No install or flash action was performed.\n'

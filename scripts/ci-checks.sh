@@ -25,7 +25,7 @@ gcc -O2 -Wall -Wextra -Werror -o /tmp/qdtech-usb-dump \
 rm -f /tmp/qdtech-touch-x11 /tmp/qdtech-usb-dump
 
 printf 'Running sunxi TOC1 package self-test...\n'
-python3 -m py_compile scripts/sunxi-toc1-package.py
+python3 -m py_compile scripts/sunxi-toc1-package.py scripts/generate-uboot-selector-logo.py
 scripts/sunxi-toc1-package.py selftest
 
 printf 'Scanning for obvious secret patterns...\n'
