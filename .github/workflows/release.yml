@@ -24,7 +24,7 @@ jobs:
       - name: Build source archive
         run: |
           repo="${GITHUB_REPOSITORY#*/}"
-          tar --exclude=.git -czf "${repo}-${GITHUB_REF_NAME}.tar.gz" .
+          git archive --format=tar.gz --prefix="${repo}-${GITHUB_REF_NAME}/" -o "${repo}-${GITHUB_REF_NAME}.tar.gz" HEAD
 
       - name: Publish GitHub release
         env:
@@ -32,4 +32,3 @@ jobs:
         run: |
           repo="${GITHUB_REPOSITORY#*/}"
           gh release create "$GITHUB_REF_NAME" "${repo}-${GITHUB_REF_NAME}.tar.gz" --generate-notes
-
