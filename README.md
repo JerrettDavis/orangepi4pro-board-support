@@ -33,3 +33,21 @@ The stock `5.15.147-sun60iw2` kernel lacks `CONFIG_HID_MULTITOUCH`,
 `CONFIG_HIDRAW`, `CONFIG_UHID`, and `CONFIG_INPUT_UINPUT`. Until a better
 kernel is built, the QDtech/Specialix MPI7003 touchscreen is handled by the
 X11/libusb bridge in `packages/qdtech-touch-x11`.
+
+The current NVMe boot baseline uses `5.15.147-sun60iw2-cyberdeck`, which enables
+native HID multitouch and keeps the X11 bridge as a fallback.
+
+## Validation
+
+Run before pushing:
+
+```bash
+scripts/ci-checks.sh
+scripts/validate-board-support.sh
+```
+
+## Releases
+
+Push a `v*` tag after CI passes to publish a GitHub release containing a source
+archive. Built kernels, modules, DTBs, and firmware are not release artifacts
+until provenance and rollback docs are complete.
