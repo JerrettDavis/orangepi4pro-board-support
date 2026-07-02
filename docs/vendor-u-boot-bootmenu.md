@@ -134,10 +134,25 @@ Artifacts are staged under `.build/u-boot/artifacts/`. The script does not run
 `dd`, write `/dev/nvme0n1`, write `/dev/mmcblk*`, erase SPI, or install a
 bootloader.
 
-## Flashing Status
+## Installed Test Status
 
-Do not flash these artifacts yet. The installed platform script shows the
-current vendor package writes:
+The current cyberdeck SD card has a validated test package installed in the
+SD-card bootloader package slot. It was built by replacing only the `u-boot`
+TOC1 item in the previously working SD package:
+
+```text
+device=/dev/mmcblk1
+package=/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-bootmenu-scriptfirst.fex
+package_sha256=8a0393cbbbd27b980f8b7c2e9fc5070b3c1dd79aaf5b42f189f66daa00202289
+u_boot_item_sha256=f57faf0cc956e639176f48996c2388cfbb8c749d5707d872b09249dcebef3845
+backup=/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260702T222612Z.bin
+backup_sha256=55dcadb7f255ad4c6489dd8fc34d07af2eac0d2110a06a20a2546775378f214e
+```
+
+The installed bytes were read back from `/dev/mmcblk1` at `bs=8192 skip=2050`
+and matched the candidate package exactly.
+
+The installed platform script shows the vendor package write locations:
 
 ```text
 boot0_sdcard.fex        -> device, bs=8k seek=1
@@ -146,7 +161,6 @@ boot0_spinor_a733.fex   -> /dev/mtd0 offset 0
 boot_package_a733_nvme.fex -> /dev/mtd0 offset 262144
 ```
 
-Do not flash generated packages until they pass all local validation checks.
-A safe test plan should use a separate recovery/test SD when possible, or a
-verified package rebuild with a byte-for-byte stock rebuild check and a saved
-rollback copy, then keep the current NVMe and SD boot media recoverable.
+Do not write boot0, NVMe boot sectors, SPI/MTD, partitions, filesystems, or
+firmware for boot-selector tests. Keep the SD card recoverable because it is
+still the active firmware source.
