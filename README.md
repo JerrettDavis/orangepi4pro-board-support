@@ -14,7 +14,8 @@ committing large vendor source trees or binary images.
   menu/keyboard fragment.
 - `packages/qdtech-touch-x11/`: current X11/libusb touch fallback copied from
   `/home/orangepi/touchscreen-fix-src`.
-- `scripts/`: dry-run board support validation and capture helpers.
+- `scripts/`: dry-run board support validation, capture helpers, and
+  file-only Allwinner TOC1 boot-package inspection/repacking tooling.
 
 ## Kernel Direction
 
@@ -53,7 +54,7 @@ scripts/validate-board-support.sh
 The near-term graphical-selector path is not GRUB EFI. The current vendor
 loader is a 32-bit ARM U-Boot and the installed package has EFI loader support
 disabled. See `docs/vendor-u-boot-bootmenu.md` for the reproducible, no-flash
-build wrapper and the current bootmenu findings.
+build wrapper, TOC1 package tooling, and the current bootmenu findings.
 
 ## Releases
 

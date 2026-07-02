@@ -12,5 +12,7 @@ manifest. Board-support-specific pins verified 2026-07-02:
 
 Vendor U-Boot build validation on this board produced `u-boot.bin` and
 `u-boot-sun60iw2p1.bin` from `sun60iw2p1_t736_defconfig`. The shipped
-`scripts/sunxi_ubootools` helper is not executable on the ARM host, so complete
-Allwinner `.fex` boot-package generation remains unresolved.
+`scripts/sunxi_ubootools` helper is not executable on the ARM host. The
+installed `boot_package*.fex` files were identified as Allwinner TOC1 packages
+using magic `0x89119800` and checksum stamp `0x5f0a6c39`; see
+`vendor-u-boot-bootmenu.md` for the parser/repacker workflow.

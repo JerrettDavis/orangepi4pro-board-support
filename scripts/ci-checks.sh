@@ -24,6 +24,10 @@ gcc -O2 -Wall -Wextra -Werror -o /tmp/qdtech-usb-dump \
   packages/qdtech-touch-x11/bin/qdtech-usb-dump.c -lusb-1.0
 rm -f /tmp/qdtech-touch-x11 /tmp/qdtech-usb-dump
 
+printf 'Running sunxi TOC1 package self-test...\n'
+python3 -m py_compile scripts/sunxi-toc1-package.py
+scripts/sunxi-toc1-package.py selftest
+
 printf 'Scanning for obvious secret patterns...\n'
 if grep -RInE '(BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|ghp_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+|AKIA[0-9A-Z]{16}|password[[:space:]]*=|token[[:space:]]*=|secret[[:space:]]*=)' \
   --exclude-dir=.git \
