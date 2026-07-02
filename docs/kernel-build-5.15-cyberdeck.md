@@ -71,3 +71,20 @@ chroot /mnt/orangepi4pro-m2/ubuntu-root \
   modinfo -k 5.15.147-sun60iw2-cyberdeck \
   hid-multitouch uhid uinput
 ```
+
+## Next Kernel Track
+
+Do not start the 6.x+ fork by guessing missing pieces. First boot and validate
+this 5.15 kernel on NVMe, then use the observed working hardware state as the
+baseline for the modern branch:
+
+- boot path and required U-Boot image format;
+- final DTS node names, compatibles, regulators, clocks, pinctrl, and GPIOs;
+- display pipeline behavior;
+- USB HID touch enumeration and event device shape;
+- PCIe/NVMe stability;
+- Wi-Fi/Bluetooth module requirements;
+- suspend, backlight, battery/power, and cyberdeck accessory interfaces.
+
+Once confirmed, the 6.x+ branch should be treated as a real kernel fork with
+reviewable DTS/config patches rather than a generated build artifact.
