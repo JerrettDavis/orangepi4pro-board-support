@@ -10,6 +10,7 @@ build_root=${BUILD_ROOT:-"$repo_root/.build/u-boot"}
 work_dir=${WORK_DIR:-"$build_root/work"}
 artifact_dir=${ARTIFACT_DIR:-"$build_root/artifacts"}
 fragment=${FRAGMENT:-"$repo_root/configs/u-boot/orangepi4pro-bootmenu.fragment"}
+bootmenu_patch=${BOOTMENU_PATCH:-"$repo_root/configs/u-boot/0001-distro-scan-scripts-before-extlinux.patch"}
 cross_compile=${CROSS_COMPILE:-arm-linux-gnueabi-}
 jobs=${JOBS:-$(nproc)}
 defconfig=${DEFCONFIG:-sun60iw2p1_t736_defconfig}
@@ -112,6 +113,11 @@ mkdir -p "$artifact_dir/lichee-chip/orangepi4pro/bin" "$artifact_dir/lichee-plat
 make "${make_common[@]}" "$defconfig"
 
 if [ "$mode" = bootmenu ]; then
+  if [ ! -r "$bootmenu_patch" ]; then
+    printf 'ERROR: bootmenu source patch not readable: %s\n' "$bootmenu_patch" >&2
+    exit 1
+  fi
+  git -C "$work_dir" apply "$bootmenu_patch"
   if [ ! -r "$fragment" ]; then
     printf 'ERROR: config fragment not readable: %s\n' "$fragment" >&2
     exit 1

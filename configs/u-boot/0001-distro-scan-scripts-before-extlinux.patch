@@ -1,0 +1,14 @@
+diff --git a/include/config_distro_bootcmd.h b/include/config_distro_bootcmd.h
+index 2a82c9d72e..ffed13b1cf 100755
+--- a/include/config_distro_bootcmd.h
++++ b/include/config_distro_bootcmd.h
+@@ -425,8 +425,8 @@
+ 		"echo Scanning ${devtype} "                               \
+ 				"${devnum}:${distro_bootpart}...; "       \
+ 		"for prefix in ${boot_prefixes}; do "                     \
+-			"run scan_dev_for_extlinux; "                     \
+ 			"run scan_dev_for_scripts; "                      \
++			"run scan_dev_for_extlinux; "                     \
+ 		"done;"                                                   \
+ 		SCAN_DEV_FOR_EFI                                          \
+ 		"\0"                                                      \

@@ -104,6 +104,18 @@ or firmware.
 - `CONFIG_DM_KEYBOARD=y`
 - `# CONFIG_EFI_LOADER is not set`
 
+`configs/u-boot/0001-distro-scan-scripts-before-extlinux.patch` changes the
+compiled distro boot environment so U-Boot scans `boot.scr` before extlinux:
+
+```text
+run scan_dev_for_scripts
+run scan_dev_for_extlinux
+```
+
+The stock order is extlinux first. On this board that means extlinux boots the
+default entry before `/boot/boot.scr` can run, so boot-script-level menu changes
+are ignored.
+
 ## Reproducible Build
 
 Build the tested menu variant:
