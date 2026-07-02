@@ -178,16 +178,22 @@ backup_sha256=55dcadb7f255ad4c6489dd8fc34d07af2eac0d2110a06a20a2546775378f214e
 The installed bytes were read back from `/dev/mmcblk1` at `bs=8192 skip=2050`
 and matched the candidate package exactly.
 
-The next file-only candidate uses the same script-first bootmenu U-Boot plus an
-embedded selector logo generated at build time:
+The installed 2026-07-02 recovery-SD test candidate uses the same script-first
+bootmenu U-Boot plus an embedded selector logo generated at build time:
 
 ```text
+device=/dev/mmcblk1
 package=/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-bootmenu-scriptfirst-selector-logo.fex
 package_sha256=bad9dc0a68dd1c047982c85f13192a8759c16298f592785f18db1d8f74971007
 u_boot_item_sha256=dfc59bbf7e4fe66f0ab2014fbe83e19ea7074a09e5c9c3740ee77fd77c51f89f
 selector_bmp_sha256=bc3dcbd5a046168fe3b463b66da96cddafd84c0779c804f308b5d788c46bcb03
 selector_bmp=file: PC bitmap, Windows 3.x format, 320 x 240 x 24, cbSize 230454
+backup=/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260702T234205Z.bin
+backup_sha256=9fabc67f143b3aa5e15ad17368684e5597196555891c886e92fc17a60ca2a4ec
 ```
+
+The installed bytes were read back from `/dev/mmcblk1` at `bs=8192 skip=2050`
+and matched the candidate for the exact 1388544-byte package length.
 
 The installed platform script shows the vendor package write locations:
 

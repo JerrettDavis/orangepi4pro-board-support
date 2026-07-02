@@ -46,11 +46,15 @@ Current candidate:
   script-first bootmenu U-Boot with that embedded selector image.
 - The generated selector BMP is 320 x 240 x 24-bit and 230454 bytes, so it is
   comfortably below the vendor logo decompression buffer size.
-- The file-only SD boot-package candidate is
+- The installed SD boot-package test candidate is
   `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-bootmenu-scriptfirst-selector-logo.fex`.
 - Candidate SHA-256:
   `bad9dc0a68dd1c047982c85f13192a8759c16298f592785f18db1d8f74971007`.
+- Recovery backup:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260702T234205Z.bin`.
+- Recovery backup SHA-256:
+  `9fabc67f143b3aa5e15ad17368684e5597196555891c886e92fc17a60ca2a4ec`.
 
-This candidate still needs a recovery-SD boot test. It is intended to make the
-boot window visibly identifiable first; actual text-menu rendering still
-depends on whether U-Boot's console backend reaches the panel.
+This candidate is installed for the next recovery-SD boot test. It is intended
+to make the boot window visibly identifiable first; actual text-menu rendering
+still depends on whether U-Boot's console backend reaches the panel.
