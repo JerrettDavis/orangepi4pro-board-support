@@ -250,6 +250,10 @@ Current HDMI-power candidate:
   `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex`
 - Build command:
   `scripts/prepare-vendor-sd-hdmi-power-package.sh --fast-1024x600 --force-route --vendor /usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex --output /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-nvme-scriptfirst-hdmi-power-fast1024-force-route.fex`
+- Recovery backup:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260703T063108Z.bin`
+- Recovery backup SHA-256:
+  `776469c39bfac3716317d64c0c25d8ce733d576dc2e69311f6088db91e6c0f8e`
 - This package adds only one behavior beyond the previous fast-output package:
   `/soc/sunxi-drm/route/disp0_hdmi0` now has a boolean `force-output`
   property. In vendor U-Boot, `display_init()` deinitializes a route when
