@@ -14,6 +14,7 @@ bootmenu_patch=${BOOTMENU_PATCH:-"$repo_root/configs/u-boot/0001-distro-scan-scr
 display_diag_patch=${DISPLAY_DIAG_PATCH:-"$repo_root/configs/u-boot/0002-add-sunxi-drm-env-diag.patch"}
 display_mode_patch=${DISPLAY_MODE_PATCH:-"$repo_root/configs/u-boot/0003-use-cyberdeck-hdmi-default-mode.patch"}
 display_fbtest_patch=${DISPLAY_FBTEST_PATCH:-"$repo_root/configs/u-boot/0004-add-sunxi-drm-fbtest-command.patch"}
+bootgui_selector_patch=${BOOTGUI_SELECTOR_PATCH:-"$repo_root/configs/u-boot/0005-add-dm-video-selector-command.patch"}
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
 cross_compile=${CROSS_COMPILE:-arm-linux-gnueabi-}
 jobs=${JOBS:-$(nproc)}
@@ -144,6 +145,11 @@ if [ "$mode" = bootmenu ]; then
     exit 1
   fi
   git -C "$work_dir" apply --recount "$display_fbtest_patch"
+  if [ ! -r "$bootgui_selector_patch" ]; then
+    printf 'ERROR: boot GUI selector patch not readable: %s\n' "$bootgui_selector_patch" >&2
+    exit 1
+  fi
+  git -C "$work_dir" apply "$bootgui_selector_patch"
   if [ ! -r "$fragment" ]; then
     printf 'ERROR: config fragment not readable: %s\n' "$fragment" >&2
     exit 1

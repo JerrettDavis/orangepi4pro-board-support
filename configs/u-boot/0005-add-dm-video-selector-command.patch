@@ -1,0 +1,362 @@
+diff --git a/cmd/Makefile b/cmd/Makefile
+index bd43a10dc8..74b7af4871 100644
+--- a/cmd/Makefile
++++ b/cmd/Makefile
+@@ -21,6 +21,7 @@ obj-y += version.o
+ # command
+ obj-$(CONFIG_CMD_AB_SELECT) += ab_select.o
+ obj-$(CONFIG_CMD_AES) += aes.o
++obj-$(CONFIG_DM_VIDEO) += opi_bootselect.o
+ obj-$(CONFIG_CMD_ADC) += adc.o
+ obj-$(CONFIG_CMD_ARMFLASH) += armflash.o
+ obj-y += blk_common.o ufs.o
+diff --git a/cmd/opi_bootselect.c b/cmd/opi_bootselect.c
+new file mode 100644
+index 0000000000..4aa2b4f9ee
+--- /dev/null
++++ b/cmd/opi_bootselect.c
+@@ -0,0 +1,344 @@
++// SPDX-License-Identifier: GPL-2.0+
++#include <common.h>
++#include <command.h>
++#include <dm.h>
++#include <video.h>
++#include <video_font.h>
++
++#define OPI_KEY_NONE 0
++#define OPI_KEY_NVME 1
++#define OPI_KEY_SD 2
++#define OPI_KEY_TOGGLE 3
++#define OPI_KEY_ENTER 4
++
++struct opi_draw {
++	struct udevice *dev;
++	struct video_priv *priv;
++};
++
++static u32 opi_rgb565(u8 r, u8 g, u8 b)
++{
++	return ((r & 0xf8) << 8) | ((g & 0xfc) << 3) | (b >> 3);
++}
++
++static u32 opi_pixel(struct video_priv *priv, u8 r, u8 g, u8 b)
++{
++	switch (priv->bpix) {
++	case VIDEO_BPP16:
++		return opi_rgb565(r, g, b);
++	case VIDEO_BPP32:
++		return (r << 16) | (g << 8) | b;
++	default:
++		return 0xff;
++	}
++}
++
++static void opi_put_pixel(struct video_priv *priv, int x, int y, u32 color)
++{
++	uchar *line;
++
++	if (x < 0 || y < 0 || x >= priv->xsize || y >= priv->ysize)
++		return;
++
++	line = priv->fb + y * priv->line_length;
++	switch (priv->bpix) {
++	case VIDEO_BPP16:
++		((u16 *)line)[x] = color;
++		break;
++	case VIDEO_BPP32:
++		((u32 *)line)[x] = color;
++		break;
++	default:
++		line[x] = color;
++		break;
++	}
++}
++
++static void opi_fill_rect(struct video_priv *priv, int x, int y, int w, int h,
++			  u32 color)
++{
++	int xx, yy;
++
++	if (x < 0) {
++		w += x;
++		x = 0;
++	}
++	if (y < 0) {
++		h += y;
++		y = 0;
++	}
++	if (x + w > priv->xsize)
++		w = priv->xsize - x;
++	if (y + h > priv->ysize)
++		h = priv->ysize - y;
++	if (w <= 0 || h <= 0)
++		return;
++
++	for (yy = y; yy < y + h; yy++) {
++		uchar *line = priv->fb + yy * priv->line_length;
++
++		switch (priv->bpix) {
++		case VIDEO_BPP16: {
++			u16 *dst = (u16 *)line + x;
++
++			for (xx = 0; xx < w; xx++)
++				dst[xx] = color;
++			break;
++		}
++		case VIDEO_BPP32: {
++			u32 *dst = (u32 *)line + x;
++
++			for (xx = 0; xx < w; xx++)
++				dst[xx] = color;
++			break;
++		}
++		default:
++			memset(line + x, color, w);
++			break;
++		}
++	}
++}
++
++static void opi_draw_char(struct video_priv *priv, int x, int y, char ch,
++			  u32 fg, u32 bg, int scale)
++{
++	int row, col, sy, sx;
++
++	if (ch < 0x20 || ch > 0x7e)
++		ch = '?';
++
++	for (row = 0; row < VIDEO_FONT_HEIGHT; row++) {
++		uchar bits = video_fontdata[(int)ch * VIDEO_FONT_HEIGHT + row];
++
++		for (col = 0; col < VIDEO_FONT_WIDTH; col++) {
++			u32 color = (bits & 0x80) ? fg : bg;
++
++			for (sy = 0; sy < scale; sy++) {
++				for (sx = 0; sx < scale; sx++) {
++					opi_put_pixel(priv, x + col * scale + sx,
++						      y + row * scale + sy,
++						      color);
++				}
++			}
++			bits <<= 1;
++		}
++	}
++}
++
++static void opi_draw_text(struct video_priv *priv, int x, int y,
++			  const char *text, u32 fg, u32 bg, int scale)
++{
++	while (*text) {
++		opi_draw_char(priv, x, y, *text, fg, bg, scale);
++		x += VIDEO_FONT_WIDTH * scale;
++		text++;
++	}
++}
++
++static void opi_center_text(struct video_priv *priv, int y, const char *text,
++			    u32 fg, u32 bg, int scale)
++{
++	int width = strlen(text) * VIDEO_FONT_WIDTH * scale;
++	int x = (priv->xsize - width) / 2;
++
++	if (x < 0)
++		x = 0;
++	opi_draw_text(priv, x, y, text, fg, bg, scale);
++}
++
++static int opi_video_open(struct opi_draw *draw)
++{
++	int ret;
++
++	ret = uclass_first_device_err(UCLASS_VIDEO, &draw->dev);
++	if (ret) {
++		printf("opi_bootselect: no video device: %d\n", ret);
++		return ret;
++	}
++
++	draw->priv = dev_get_uclass_priv(draw->dev);
++	if (!draw->priv || !draw->priv->fb || !draw->priv->xsize ||
++	    !draw->priv->ysize) {
++		printf("opi_bootselect: video framebuffer is not ready\n");
++		return -ENODEV;
++	}
++
++	return 0;
++}
++
++static void opi_draw_selector(struct opi_draw *draw, int selected,
++			      int remaining)
++{
++	struct video_priv *priv = draw->priv;
++	u32 bg = opi_pixel(priv, 13, 16, 20);
++	u32 panel = opi_pixel(priv, 34, 39, 47);
++	u32 panel2 = opi_pixel(priv, 27, 31, 38);
++	u32 fg = opi_pixel(priv, 245, 248, 252);
++	u32 muted = opi_pixel(priv, 174, 184, 198);
++	u32 green = opi_pixel(priv, 24, 128, 81);
++	u32 blue = opi_pixel(priv, 42, 101, 176);
++	u32 yellow = opi_pixel(priv, 255, 209, 102);
++	u32 black = opi_pixel(priv, 0, 0, 0);
++	int w = priv->xsize;
++	int h = priv->ysize;
++	int scale = (w >= 900 && h >= 500) ? 2 : 1;
++	int title_scale = scale;
++	int top = h / 7;
++	int row_h = max(58, h / 8);
++	int box_w = (w * 82) / 100;
++	int box_x = (w - box_w) / 2;
++	int y1 = top + 92;
++	int y2 = y1 + row_h + 18;
++	char line[64];
++
++	opi_fill_rect(priv, 0, 0, w, h, bg);
++	opi_fill_rect(priv, 0, 0, w, 12, selected ? blue : green);
++	opi_center_text(priv, top, "Orange Pi 4 Pro Boot Selector",
++			fg, bg, title_scale);
++	opi_center_text(priv, top + 34,
++			"Pre-Linux U-Boot selector: choose a root device",
++			muted, bg, 1);
++
++	opi_fill_rect(priv, box_x, y1, box_w, row_h,
++		      selected == 0 ? green : panel);
++	opi_draw_text(priv, box_x + 24, y1 + row_h / 2 - 8,
++		      "1 / N / Enter   Ubuntu NVMe", fg,
++		      selected == 0 ? green : panel, 1);
++
++	opi_fill_rect(priv, box_x, y2, box_w, row_h,
++		      selected == 1 ? blue : panel2);
++	opi_draw_text(priv, box_x + 24, y2 + row_h / 2 - 8,
++		      "2 / S           Ubuntu SD", fg,
++		      selected == 1 ? blue : panel2, 1);
++
++	opi_center_text(priv, y2 + row_h + 28,
++			"Use N/S/1/2, arrow keys, Tab, Space, or Enter",
++			muted, bg, 1);
++	if (remaining >= 0) {
++		snprintf(line, sizeof(line), "Defaulting to NVMe in %d seconds",
++			 remaining);
++		opi_center_text(priv, y2 + row_h + 54, line, yellow, bg, 1);
++	} else {
++		opi_center_text(priv, y2 + row_h + 54,
++				selected ? "Booting SD" : "Booting NVMe",
++				yellow, bg, 1);
++	}
++
++	opi_fill_rect(priv, 0, h - 2, w, 2, black);
++	video_sync(draw->dev);
++}
++
++static int opi_read_key(void)
++{
++	int c;
++
++	if (!tstc())
++		return OPI_KEY_NONE;
++
++	c = getc();
++	if (c == '\r' || c == '\n')
++		return OPI_KEY_ENTER;
++	if (c == '1' || c == 'n' || c == 'N')
++		return OPI_KEY_NVME;
++	if (c == '2' || c == 's' || c == 'S')
++		return OPI_KEY_SD;
++	if (c == '\t' || c == ' ')
++		return OPI_KEY_TOGGLE;
++	if (c == 0x1b) {
++		ulong start = get_timer(0);
++
++		while (get_timer(start) < 50) {
++			if (!tstc())
++				continue;
++			c = getc();
++			if (c != '[')
++				return OPI_KEY_NONE;
++			while (get_timer(start) < 50) {
++				if (!tstc())
++					continue;
++				c = getc();
++				if (c == 'A' || c == 'B')
++					return OPI_KEY_TOGGLE;
++				return OPI_KEY_NONE;
++			}
++		}
++	}
++
++	return OPI_KEY_NONE;
++}
++
++static int do_opi_bootselect(cmd_tbl_t *cmdtp, int flag, int argc,
++			     char *const argv[])
++{
++	struct opi_draw draw;
++	int timeout = 10;
++	int selected = 0;
++	int last_remaining = -1;
++	ulong start;
++
++	if (argc > 1)
++		timeout = simple_strtoul(argv[1], NULL, 10);
++	if (timeout < 0)
++		timeout = 0;
++
++	run_command("usb start", 0);
++	env_set("stdin", "serial,usbkbd");
++	env_set("stdout", "serial,vidconsole");
++	env_set("stderr", "serial,vidconsole");
++
++	if (opi_video_open(&draw))
++		return CMD_RET_FAILURE;
++
++	start = get_timer(0);
++	while (1) {
++		int remaining = timeout - (int)(get_timer(start) / 1000);
++		int key;
++
++		if (remaining < 0)
++			remaining = 0;
++		if (remaining != last_remaining) {
++			opi_draw_selector(&draw, selected, remaining);
++			last_remaining = remaining;
++		}
++
++		key = opi_read_key();
++		if (key == OPI_KEY_NVME) {
++			selected = 0;
++			break;
++		}
++		if (key == OPI_KEY_SD) {
++			selected = 1;
++			break;
++		}
++		if (key == OPI_KEY_TOGGLE) {
++			selected = !selected;
++			last_remaining = -1;
++		}
++		if (key == OPI_KEY_ENTER)
++			break;
++		if (get_timer(start) >= (ulong)timeout * 1000)
++			break;
++
++		udelay(20000);
++	}
++
++	if (selected == 1) {
++		env_set("opi_bootselect_target", "sd");
++		env_set("bootchooser", "dmvideo-selector-sd");
++		printf("opi_bootselect: selected SD\n");
++	} else {
++		env_set("opi_bootselect_target", "nvme");
++		env_set("bootchooser", "dmvideo-selector-nvme");
++		printf("opi_bootselect: selected NVMe\n");
++	}
++
++	opi_draw_selector(&draw, selected, -1);
++	mdelay(350);
++	return CMD_RET_SUCCESS;
++}
++
++U_BOOT_CMD(
++	opi_bootselect, 2, 0, do_opi_bootselect,
++	"Orange Pi 4 Pro DM-video boot selector",
++	"[timeout_seconds]"
++);

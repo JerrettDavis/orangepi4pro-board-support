@@ -73,6 +73,11 @@ grep -aFq 'U-Boot Boot Menu' "$uboot" \
     printf 'ERROR: U-Boot artifact does not contain bootmenu support strings\n' >&2
     exit 1
   }
+grep -aFq 'opi_bootselect' "$uboot" \
+  || {
+    printf 'ERROR: U-Boot artifact does not contain DM-video selector command\n' >&2
+    exit 1
+  }
 
 mkdir -p "$(dirname "$output")"
 "$repo_root/scripts/sunxi-toc1-package.py" repack \
@@ -90,6 +95,11 @@ grep -aFq 'scan_dev_for_scripts; run scan_dev_for_extlinux' "$output" \
 grep -aFq 'U-Boot Boot Menu' "$output" \
   || {
     printf 'ERROR: output package does not contain bootmenu support strings\n' >&2
+    exit 1
+  }
+grep -aFq 'opi_bootselect' "$output" \
+  || {
+    printf 'ERROR: output package does not contain DM-video selector command\n' >&2
     exit 1
   }
 
