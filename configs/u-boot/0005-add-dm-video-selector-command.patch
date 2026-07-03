@@ -53,7 +53,7 @@ index 0000000000..4aa2b4f9ee
 +	case VIDEO_BPP16:
 +		return opi_rgb565(r, g, b);
 +	case VIDEO_BPP32:
-+		return (r << 16) | (g << 8) | b;
++		return 0xff000000 | (r << 16) | (g << 8) | b;
 +	default:
 +		return 0xff;
 +	}
