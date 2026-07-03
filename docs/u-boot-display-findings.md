@@ -604,3 +604,26 @@ selector defaults while the factory display path is retested.
   package, but pre-OS HDMI output is still absent. Further visual work should
   start from this known-good baseline and avoid reinstalling the failed DRM
   reinit package.
+
+2026-07-03 BOOT_GUI source probe:
+
+- `scripts/build-vendor-uboot.sh --bootgui-scriptfirst --clean` is a
+  build-only probe. It applies only script-first distro scanning plus
+  `configs/u-boot/orangepi4pro-bootgui.fragment`.
+- The fragment enables the vendor legacy GUI path:
+  `CONFIG_DISP2_SUNXI=y` and `CONFIG_BOOT_GUI=y`. It explicitly leaves
+  `CONFIG_UPDATE_DISPLAY_MODE`, `CONFIG_BOOT_GUI_DOUBLE_BUF`, and
+  `CONFIG_BOOT_GUI_TEST` disabled.
+- With `CONFIG_UPDATE_DISPLAY_MODE=y`, the source fails earlier in
+  `drivers/video/sunxi/bootGUI/dev_manage.c` with a redeclared local `i`.
+- With `CONFIG_UPDATE_DISPLAY_MODE` disabled, the build reaches the legacy
+  DISP2 display stack and then fails in `drivers/video/sunxi/disp2/disp`
+  because A733/sun60iw2 is using the newer AW DRM display path. Representative
+  failures include incomplete `struct disp_manager`, missing `DISP_*`
+  constants, and missing `GFP_KERNEL`.
+
+Conclusion: the factory-looking `BOOT_GUI` path is not a simple Kconfig fix
+for this A733 branch. Enabling it pulls in a legacy display stack that is not
+build-clean beside the current sun60iw2 AW DRM configuration. Keep this mode as
+a reproducible negative probe only; do not package or install it as a boot test
+candidate without source-level display-stack work.

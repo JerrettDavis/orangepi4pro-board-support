@@ -10,6 +10,7 @@ build_root=${BUILD_ROOT:-"$repo_root/.build/u-boot"}
 work_dir=${WORK_DIR:-"$build_root/work"}
 artifact_dir=${ARTIFACT_DIR:-"$build_root/artifacts"}
 fragment=${FRAGMENT:-"$repo_root/configs/u-boot/orangepi4pro-bootmenu.fragment"}
+bootgui_fragment=${BOOTGUI_FRAGMENT:-"$repo_root/configs/u-boot/orangepi4pro-bootgui.fragment"}
 bootmenu_patch=${BOOTMENU_PATCH:-"$repo_root/configs/u-boot/0001-distro-scan-scripts-before-extlinux.patch"}
 display_diag_patch=${DISPLAY_DIAG_PATCH:-"$repo_root/configs/u-boot/0002-add-sunxi-drm-env-diag.patch"}
 display_mode_patch=${DISPLAY_MODE_PATCH:-"$repo_root/configs/u-boot/0003-use-cyberdeck-hdmi-default-mode.patch"}
@@ -37,7 +38,7 @@ usage() {
   cat <<'USAGE'
 Build the Orange Pi vendor U-Boot tree for sun60iw2 without flashing anything.
 
-Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu|--scriptfirst-logo] [--selector-logo] [--clean]
+Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu|--scriptfirst-logo|--bootgui-scriptfirst] [--selector-logo] [--clean]
 
 Environment overrides:
   SOURCE_DIR       Existing local vendor tree. Default:
@@ -49,6 +50,7 @@ Environment overrides:
   CROSS_COMPILE    Toolchain prefix. Default: arm-linux-gnueabi-
   DTC              Device tree compiler. Default: /usr/bin/dtc
   JOBS             make -j value. Default: nproc
+  BOOTGUI_FRAGMENT Kconfig fragment for vendor BOOT_GUI display testing.
   SELECTOR_LOGO_GENERATOR
                    Generator for embedded boot_bmp.h selector image.
 
@@ -71,6 +73,9 @@ while [ "$#" -gt 0 ]; do
     --scriptfirst-logo)
       mode=scriptfirst-logo
       selector_logo=true
+      ;;
+    --bootgui-scriptfirst)
+      mode=bootgui-scriptfirst
       ;;
     --selector-logo)
       mode=bootmenu
@@ -141,7 +146,7 @@ mkdir -p "$artifact_dir/lichee-chip/orangepi4pro/bin" "$artifact_dir/lichee-plat
 
 make "${make_common[@]}" "$defconfig"
 
-if [ "$mode" = bootmenu ] || [ "$mode" = scriptfirst-logo ]; then
+if [ "$mode" = bootmenu ] || [ "$mode" = scriptfirst-logo ] || [ "$mode" = bootgui-scriptfirst ]; then
   if [ ! -r "$bootmenu_patch" ]; then
     printf 'ERROR: bootmenu source patch not readable: %s\n' "$bootmenu_patch" >&2
     exit 1
@@ -273,6 +278,22 @@ if [ "$mode" = bootmenu ]; then
   make "${make_common[@]}" olddefconfig
 fi
 
+if [ "$mode" = bootgui-scriptfirst ]; then
+  if [ ! -r "$fragment" ]; then
+    printf 'ERROR: config fragment not readable: %s\n' "$fragment" >&2
+    exit 1
+  fi
+  if [ ! -r "$bootgui_fragment" ]; then
+    printf 'ERROR: BOOT_GUI config fragment not readable: %s\n' "$bootgui_fragment" >&2
+    exit 1
+  fi
+  (
+    cd "$work_dir"
+    CROSS_COMPILE="$cross_compile" ./scripts/kconfig/merge_config.sh .config "$fragment" "$bootgui_fragment"
+  )
+  make "${make_common[@]}" olddefconfig
+fi
+
 artifact_mode=$mode
 if [ "$selector_logo" = true ]; then
   if [ ! -x "$selector_logo_generator" ]; then
@@ -302,7 +323,7 @@ for artifact in \
   fi
 done
 
-grep -E 'CONFIG_(CMD_BOOTMENU|AUTOBOOT_MENU_SHOW|USB_KEYBOARD|SYS_USB_EVENT_POLL|DM_KEYBOARD|EFI_LOADER|BOOTDELAY)=' \
+grep -E 'CONFIG_(CMD_BOOTMENU|AUTOBOOT_MENU_SHOW|USB_KEYBOARD|SYS_USB_EVENT_POLL|DM_KEYBOARD|EFI_LOADER|BOOTDELAY|DISP2_SUNXI|BOOT_GUI|UPDATE_DISPLAY_MODE|CMD_SUNXI_BMP|SUNXI_DRM_SUPPORT|DM_VIDEO)=' \
   "$work_dir/.config" > "$artifact_dir/$artifact_mode/config-summary.txt" || true
 
 cat > "$artifact_dir/$artifact_mode/SOURCE.txt" <<EOF
@@ -313,6 +334,7 @@ defconfig=$defconfig
 mode=$mode
 selector_logo=$selector_logo
 apply_display_mode_patch=$apply_display_mode_patch
+bootgui_fragment=$bootgui_fragment
 cross_compile=$cross_compile
 dtc=${DTC:-/usr/bin/dtc}
 EOF
