@@ -128,6 +128,24 @@ Current HDMI-power candidate:
   mismatch is the blocker, the bootloader window should show an obvious splash
   or logo before the kernel dmesg/Plymouth phase.
 
+2026-07-03 diagnostic package:
+
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-diagnostic-fbtest-hdmi-power.fex`
+- Package SHA-256:
+  `fcfac8e4e89b6b4c5237bc7649064f3a9bf0d3d85a4b64a5eddd47e3b3ec8d81`
+- U-Boot item SHA-256:
+  `6beece37c94f128b1e45a06bb97f5cf043699e63399ae5bfde74afeac9f4da62`
+- Source package:
+  `boot_package_sd-bootmenu-scriptfirst-selector-logo-drm-env-1024x600-fbtest.fex`
+- This package combines the custom diagnostic U-Boot commands
+  (`sunxi_drm_env`, `sunxi_drm fbtest`) with the HDMI power DTB correction
+  from `scripts/prepare-vendor-sd-hdmi-power-package.sh`.
+- The staged boot script runs `selector_visual_test=fbtest`, holds for 20
+  seconds, boots NVMe through the legacy `bootm` path, and appends
+  `bootchooser=uboot-visual-fbtest-*` plus `opi_pre_*`, `opi_fb_*`, and
+  `opi_post_*` diagnostics to `/proc/cmdline`.
+
 Installed framebuffer-test package:
 
 - Package SHA-256:
