@@ -1,0 +1,12 @@
+diff --git a/drivers/video/drm/sunxi_drm_hdmi.c b/drivers/video/drm/sunxi_drm_hdmi.c
+--- a/drivers/video/drm/sunxi_drm_hdmi.c
++++ b/drivers/video/drm/sunxi_drm_hdmi.c
+@@ -785,6 +785,8 @@ int _sunxi_drm_hdmi_enable(struct sunxi_drm_connector *conn,
+ 	memcpy(&disp_cfg.timing, &hdmi->disp_timing, sizeof(struct disp_video_timings));
+ 	disp_cfg.type  = INTERFACE_HDMI;
+ 	disp_cfg.de_id = hw_id;
++	disp_cfg.format = hdmi->disp_config.format;
++	disp_cfg.sw_enable = 0;
+ 	disp_cfg.irq_handler = scrtc_state->crtc_irq_handler;
+ 	disp_cfg.irq_data = state;
+ 

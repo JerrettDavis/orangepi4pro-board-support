@@ -951,6 +951,35 @@ delivering a valid visible signal until Linux later performs its full
 - Expected reboot evidence: retain `bootchooser=uboot-logo-preinit-ok` and
   retained diagnostics instead of `drm-missing`; `opi_logo_hdmi` should include
   a `tv49000000`-style value if the named clock fallback worked.
+- Reboot result: Linux reached the NVMe root and U-Boot diagnostics stayed
+  present. `opi_logo_hdmi` reported `tv49000000`, proving the named `hdmi_tv`
+  fallback worked, but the bootloader display stayed black. The remaining
+  mismatch is the low-level PHY/MC state: U-Boot still reported `stat00` and
+  `lock00`, while Linux later reinitialized HDMI and reached SNPS PHY lock.
+
+2026-07-03 HDMI TV clock plus TOP/MC parity package:
+
+- Build command:
+  `scripts/build-vendor-uboot.sh --scriptfirst-diag-modeclock --clean`
+- Build artifact:
+  `.build/u-boot/artifacts/scriptfirst-diag-modeclock/u-boot-sun60iw2p1.bin`
+- Build artifact SHA-256:
+  `bb53b2a56f12fb52d9db076890e1ac64adfb659a6ed2497acbb6e7ca25a4e21e`
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-scriptfirst-diag-modeclock-force1024-hdmitvclk-topmc.fex`
+- Package SHA-256:
+  `9a71e37c0773a3b9d408d651db12037e7d7bbe5d7624244961f5610f38c89989`
+- U-Boot item SHA-256:
+  `bb53b2a56f12fb52d9db076890e1ac64adfb659a6ed2497acbb6e7ca25a4e21e`
+- Scope: stock embedded U-Boot DTB, vendor monitor/SCP blobs, script-first scan
+  order, passive `sunxi_drm_env`/`sunxi_hdmi_env`, forced `1024x600@49 MHz`,
+  named `hdmi_tv` clock fallback, Linux TOP PHY PLL auto-calculation,
+  Linux-like MC clock enable order, normal-path TCON format propagation, and
+  passive TOP PHY register diagnostics. It does not include the unsafe full
+  DRM reinit command.
+- Expected reboot evidence: retain `bootchooser=uboot-logo-preinit-ok`, keep
+  `tv49000000`, gain `top20_` through `top40_` diagnostics, and check whether
+  `stat`/`lock` move from `00` toward Linux's locked state.
 - Reboot result: Linux reached the NVMe root, but both diagnostics regressed to
   `opi_logo_hdmi=diag-missing` and `opi_logo_drm=diag-missing`. The diagnostic
   command strings still exist in the installed package, so the broader embedded

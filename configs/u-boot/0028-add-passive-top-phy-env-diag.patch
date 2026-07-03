@@ -1,0 +1,50 @@
+diff --git a/drivers/video/drm/sunxi_drm_hdmi.c b/drivers/video/drm/sunxi_drm_hdmi.c
+--- a/drivers/video/drm/sunxi_drm_hdmi.c
++++ b/drivers/video/drm/sunxi_drm_hdmi.c
+@@ -1209,8 +1209,14 @@ static int do_sunxi_hdmi_env(struct cmd_tbl_s *cmdtp, int flag,
+ 	unsigned long tv_rate = 0;
+ 	struct clk *opi_hdmi_tv_clk = NULL;
+ 	u32 top_cfg = 0;
+ 	u32 top_stat = 0;
++	u32 top_pll = 0;
++	u32 top_sel = 0;
++	u32 top_ldo = 0;
++	u32 top_pat0 = 0;
++	u32 top_pat1 = 0;
++	u32 top_lockreg = 0;
+ 	u8 phy_conf0 = 0;
+ 	u8 phy_stat0 = 0;
+@@ -1221,7 +1227,7 @@ static int do_sunxi_hdmi_env(struct cmd_tbl_s *cmdtp, int flag,
+ 	u8 top_lock = 0;
+ 	u8 top_clk_sel = 0xff;
+ 	u8 top_pad_sel = 0xff;
+-	char diag[256];
++	char diag[384];
+ 
+ 	if (!drm || list_empty(&drm->display_list)) {
+@@ -1264,6 +1270,12 @@ static int do_sunxi_hdmi_env(struct cmd_tbl_s *cmdtp, int flag,
+ 		top_pad_sel = top_phy_get_pad_select();
+ 		top_cfg = top_phy_read(0);
+ 		top_stat = top_phy_read(4);
++		top_pll = top_phy_read(8);
++		top_sel = top_phy_read(9);
++		top_ldo = top_phy_read(10);
++		top_pat0 = top_phy_read(11);
++		top_pat1 = top_phy_read(12);
++		top_lockreg = top_phy_read(16);
+ 	}
+ 	if (dw && dw->sw_init) {
+@@ -1276,7 +1288,7 @@ static int do_sunxi_hdmi_env(struct cmd_tbl_s *cmdtp, int flag,
+ 	}
+ 
+ 	snprintf(diag, sizeof(diag),
+-		 "hdmi=fast%d,hpd%d,clk%d,out%d,drm%d,mode%d,tcon%lu,hdmi%lu,tv%lu,pix%u,tmds%u,toplock%d,topclk%d,toppad%d,top0_%08x,top10_%08x,phy%02x,stat%02x,rst%02x,lock%02x,vid%02x,gcp%02x",
++		 "hdmi=fast%d,hpd%d,clk%d,out%d,drm%d,mode%d,tcon%lu,hdmi%lu,tv%lu,pix%u,tmds%u,toplock%d,topclk%d,toppad%d,top0_%08x,top10_%08x,top20_%08x,top24_%08x,top28_%08x,top2c_%08x,top30_%08x,top40_%08x,phy%02x,stat%02x,rst%02x,lock%02x,vid%02x,gcp%02x",
+ 		 pctl->dts_fast_output ? 1 : 0,
+@@ -1290,6 +1302,7 @@ static int do_sunxi_hdmi_env(struct cmd_tbl_s *cmdtp, int flag,
+ 		 dw ? dw->pixel_clk : 0,
+ 		 dw ? dw->tmds_clk : 0,
+ 		 top_lock, top_clk_sel, top_pad_sel, top_cfg, top_stat,
++		 top_pll, top_sel, top_ldo, top_pat0, top_pat1, top_lockreg,
+ 		 phy_conf0, phy_stat0, mc_phyrstz, mc_lockon, fc_invid, fc_gcp);
+ 	env_set("opi_hdmi_diag", diag);

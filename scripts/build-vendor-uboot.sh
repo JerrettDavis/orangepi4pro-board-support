@@ -34,8 +34,10 @@ hdmi_fc_iteration_patch=${HDMI_FC_ITERATION_PATCH:-"$repo_root/configs/u-boot/00
 hdmi_phy_rxsense_patch=${HDMI_PHY_RXSENSE_PATCH:-"$repo_root/configs/u-boot/0020-wait-for-snps-phy-rxsense.patch"}
 hdmi_top_phy_autocal_patch=${HDMI_TOP_PHY_AUTOCAL_PATCH:-"$repo_root/configs/u-boot/0021-sync-linux-top-phy-pll-autocal.patch"}
 hdmi_top_phy_diag_patch=${HDMI_TOP_PHY_DIAG_PATCH:-"$repo_root/configs/u-boot/0022-add-top-phy-pll-env-diag.patch"}
+hdmi_passive_top_phy_diag_patch=${HDMI_PASSIVE_TOP_PHY_DIAG_PATCH:-"$repo_root/configs/u-boot/0028-add-passive-top-phy-env-diag.patch"}
 hdmi_mc_clock_patch=${HDMI_MC_CLOCK_PATCH:-"$repo_root/configs/u-boot/0023-sync-linux-hdmi-mc-clock-enable.patch"}
 hdmi_tcon_format_patch=${HDMI_TCON_FORMAT_PATCH:-"$repo_root/configs/u-boot/0024-pass-hdmi-format-to-tcon-reinit.patch"}
+hdmi_normal_tcon_format_patch=${HDMI_NORMAL_TCON_FORMAT_PATCH:-"$repo_root/configs/u-boot/0027-pass-hdmi-format-to-normal-tcon-init.patch"}
 force_cyberdeck_hdmi_mode_patch=${FORCE_CYBERDECK_HDMI_MODE_PATCH:-"$repo_root/configs/u-boot/0025-force-cyberdeck-hdmi-mode.patch"}
 hdmi_tv_clock_fallback_patch=${HDMI_TV_CLOCK_FALLBACK_PATCH:-"$repo_root/configs/u-boot/0026-program-hdmi-tv-clock-fallback.patch"}
 apply_drm_reinit_patch=${APPLY_DRM_REINIT_PATCH:-false}
@@ -187,6 +189,28 @@ if [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ]; t
   fi
   git -C "$work_dir" apply --recount "$hdmi_diag_patch"
   if [ "$mode" = scriptfirst-diag-modeclock ]; then
+    for patch in \
+      "$hdmi_top_phy_autocal_patch" \
+      "$hdmi_mc_clock_patch" \
+      "$hdmi_normal_tcon_format_patch"; do
+      if [ ! -r "$patch" ]; then
+        printf 'ERROR: HDMI Linux-parity patch not readable: %s\n' "$patch" >&2
+        exit 1
+      fi
+      git -C "$work_dir" apply --recount "$patch"
+    done
+    grep -q 'Match Linux sun60iw2' \
+      "$work_dir/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_mc.c" \
+      || {
+        printf 'ERROR: HDMI MC clock patch did not apply cleanly\n' >&2
+        exit 1
+      }
+    grep -q 'disp_cfg.format = hdmi->disp_config.format' \
+      "$work_dir/drivers/video/drm/sunxi_drm_hdmi.c" \
+      || {
+        printf 'ERROR: HDMI normal TCON format patch did not apply cleanly\n' >&2
+        exit 1
+      }
     if [ ! -r "$display_mode_patch" ]; then
       printf 'ERROR: display mode patch not readable: %s\n' "$display_mode_patch" >&2
       exit 1
@@ -224,6 +248,17 @@ if [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ]; t
       "$work_dir/drivers/video/drm/sunxi_drm_hdmi.c" \
       || {
         printf 'ERROR: HDMI TV clock fallback patch did not apply cleanly\n' >&2
+        exit 1
+      }
+    if [ ! -r "$hdmi_passive_top_phy_diag_patch" ]; then
+      printf 'ERROR: passive TOP PHY diagnostics patch not readable: %s\n' "$hdmi_passive_top_phy_diag_patch" >&2
+      exit 1
+    fi
+    git -C "$work_dir" apply --recount "$hdmi_passive_top_phy_diag_patch"
+    grep -q 'top20_' \
+      "$work_dir/drivers/video/drm/sunxi_drm_hdmi.c" \
+      || {
+        printf 'ERROR: passive TOP PHY diagnostics patch did not apply cleanly\n' >&2
         exit 1
       }
   fi
