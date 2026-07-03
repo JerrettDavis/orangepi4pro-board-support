@@ -338,6 +338,32 @@ Current HDMI-power candidate:
 - Extracted package DTB check:
   `hdmi clocks = 131 753 142 141 143 144`
   `clock-names = clk_tcon_tv clk_hdmi clk_hdmi_24M clk_bus_hdmi rst_main rst_sub`
+- Reboot result: the selected `clk_hdmi` clock was now correct
+  (`hdmi74250000`), but the top PHY registers read zero and no U-Boot visual
+  was visible. That exposed a second driver issue: vendor U-Boot parses
+  `clk_bus_hdmi` but did not enable it in `_sunxi_drv_hdmi_clock_on()`.
+
+2026-07-03 custom bootmenu HDMI bus-clock 720p package:
+
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-busclock-720p.fex`
+- Package SHA-256:
+  `0a7a82b76e83cbb612c145c8f9414bb7dc7b4a5ce0c533c9cf002c4880337182`
+- U-Boot item SHA-256:
+  `50c3195cd076c8c8c3fedd596ecfc4fe034a505e7e50e8647b0a1acb426b622a`
+- Source package:
+  `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex`
+- Build commands:
+  `APPLY_DISPLAY_MODE_PATCH=false scripts/build-vendor-uboot.sh --bootmenu --clean`
+  `scripts/prepare-vendor-sd-hdmi-power-package.sh --uboot .build/u-boot/artifacts/bootmenu/u-boot-sun60iw2p1.bin --hdmi-default-mode 1280x720 --force-route --vendor /usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex --output /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-busclock-720p.fex`
+- Rationale: keeps the corrected `clk_hdmi`/`clk_bus_hdmi` DTB binding and
+  adds a source patch so `_sunxi_drv_hdmi_clock_on()` enables the parsed
+  `clk_bus_hdmi` gate. Without that gate, the HDMI TV clock can be programmed
+  but the HDMI/top-PHY block does not reliably produce pre-OS signal.
+- Extracted package check:
+  `hdmi clocks = 131 753 142 141 143 144`
+  `clock-names = clk_tcon_tv clk_hdmi clk_hdmi_24M clk_bus_hdmi rst_main rst_sub`
+  `grep -aF 'hdmi drv bus clock enable' u-boot.bin` matched once.
 
 Installed framebuffer-test package:
 
