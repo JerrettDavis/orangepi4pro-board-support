@@ -2,15 +2,6 @@ diff --git a/drivers/video/drm/sunxi_drm_hdmi.c b/drivers/video/drm/sunxi_drm_hd
 index ac0d393..7bdad7b 100644
 --- a/drivers/video/drm/sunxi_drm_hdmi.c
 +++ b/drivers/video/drm/sunxi_drm_hdmi.c
-@@ -22,6 +22,8 @@
- #include "sunxi_drm_helper_funcs.h"
- #include "sunxi_drm_crtc.h"
- #include "sunxi_device/hardware/lowlevel_hdmi20/phy_top.h"
-+#include "sunxi_device/hardware/lowlevel_hdmi20/dw_dev.h"
-+#include "sunxi_device/hardware/lowlevel_hdmi20/dw_fc.h"
- 
- 
- #define SUNXI_HDMI_EDID_LENGTH		(1024)
 @@ -622,6 +624,7 @@ ssize_t _sunxi_hdmi_sysfs_pattern_store(struct udevice *dev, int bit)
  {
  	struct sunxi_drm_hdmi *hdmi = dev_get_priv(dev);

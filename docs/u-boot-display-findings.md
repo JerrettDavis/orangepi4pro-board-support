@@ -404,3 +404,26 @@ scripts/validate-stock-bootgui-package.sh \
 This package preserves the stock vendor U-Boot item and only changes distro
 scan order from extlinux-first to script-first, so `boot.scr` can still stage
 selector defaults while the factory display path is retested.
+
+2026-07-03 HDMI rich-register diagnostic package:
+
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-richdiag-1024x600.fex`
+- Package SHA-256:
+  `d765d346f939de1438843a195b291cc7b9816c757da70b51d654876f1f815ba8`
+- U-Boot item SHA-256:
+  `317d6fe69c1e4aa1c727c0c24ef1a04e8a20d19209a7f7b4b7c8c1bf7bcfc2f5`
+- Source package:
+  `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex`
+- Build commands:
+  `HOME=/root APPLY_DISPLAY_MODE_PATCH=true scripts/build-vendor-uboot.sh --bootmenu --clean`
+  `scripts/prepare-vendor-sd-hdmi-power-package.sh --uboot .build/u-boot/artifacts/bootmenu/u-boot-sun60iw2p1.bin --hdmi-default-mode 1024x600 --force-route --vendor /usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex --output /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-richdiag-1024x600.fex`
+- Rationale: prior tests proved the script path and NVMe boot handoff work, but
+  the HDMI sink still sees black or no signal before Linux. This package keeps
+  the corrected 1024x600 fallback, HDMI power, route, and clock handling, and
+  extends `sunxi_hdmi_env` to export DesignWare PHY, mode-control, lock, and
+  frame-composer registers in `opi_hdmi_diag`.
+- Expected next evidence after the HDMI20 internal pattern test:
+  `bootchooser=uboot-visual-hdmi20-pattern-ok` plus `opi_pre_hdmi=*`,
+  `opi_pat_hdmipat=*`, and `opi_post_hdmi=*` fields containing
+  `phy`, `stat`, `rst`, `lock`, `vid`, and `gcp` values.

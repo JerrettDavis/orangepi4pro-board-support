@@ -2,15 +2,19 @@ diff --git a/drivers/video/drm/sunxi_drm_hdmi.c b/drivers/video/drm/sunxi_drm_hd
 index 060fca1..8f006a0 100644
 --- a/drivers/video/drm/sunxi_drm_hdmi.c
 +++ b/drivers/video/drm/sunxi_drm_hdmi.c
-@@ -21,6 +21,7 @@
+@@ -21,6 +21,11 @@
  #include "sunxi_drm_drv.h"
  #include "sunxi_drm_helper_funcs.h"
  #include "sunxi_drm_crtc.h"
 +#include "sunxi_device/hardware/lowlevel_hdmi20/phy_top.h"
++#include "sunxi_device/hardware/lowlevel_hdmi20/dw_dev.h"
++#include "sunxi_device/hardware/lowlevel_hdmi20/dw_fc.h"
++#include "sunxi_device/hardware/lowlevel_hdmi20/dw_mc.h"
++#include "sunxi_device/hardware/lowlevel_hdmi20/dw_phy.h"
  
  
  #define SUNXI_HDMI_EDID_LENGTH		(1024)
-@@ -1172,8 +1173,87 @@ U_BOOT_DRIVER(sunxi_drm_hdmi) = {
+@@ -1172,8 +1177,99 @@ U_BOOT_DRIVER(sunxi_drm_hdmi) = {
  	.priv_auto_alloc_size = sizeof(struct sunxi_drm_hdmi),
  };
  
@@ -28,6 +32,12 @@ index 060fca1..8f006a0 100644
 +	unsigned long hdmi_rate = 0;
 +	u32 top_cfg = 0;
 +	u32 top_stat = 0;
++	u8 phy_conf0 = 0;
++	u8 phy_stat0 = 0;
++	u8 mc_phyrstz = 0;
++	u8 mc_lockon = 0;
++	u8 fc_invid = 0;
++	u8 fc_gcp = 0;
 +	u8 top_lock = 0;
 +	u8 top_clk_sel = 0xff;
 +	u8 top_pad_sel = 0xff;
@@ -75,9 +85,17 @@ index 060fca1..8f006a0 100644
 +		top_cfg = top_phy_read(0);
 +		top_stat = top_phy_read(4);
 +	}
++	if (dw && dw->sw_init) {
++		phy_conf0 = (u8)dw_read(PHY_CONF0);
++		phy_stat0 = (u8)dw_read(PHY_STAT0);
++		mc_phyrstz = (u8)dw_read(MC_PHYRSTZ);
++		mc_lockon = (u8)dw_read(MC_LOCKONCLOCK);
++		fc_invid = (u8)dw_read(FC_INVIDCONF);
++		fc_gcp = (u8)dw_read(FC_GCP);
++	}
 +
 +	snprintf(diag, sizeof(diag),
-+		 "hdmi=fast%d,hpd%d,clk%d,out%d,drm%d,mode%d,tcon%lu,hdmi%lu,pix%u,tmds%u,toplock%d,topclk%d,toppad%d,top0_%08x,top10_%08x",
++		 "hdmi=fast%d,hpd%d,clk%d,out%d,drm%d,mode%d,tcon%lu,hdmi%lu,pix%u,tmds%u,toplock%d,topclk%d,toppad%d,top0_%08x,top10_%08x,phy%02x,stat%02x,rst%02x,lock%02x,vid%02x,gcp%02x",
 +		 pctl->dts_fast_output ? 1 : 0,
 +		 pctl->drv_hpd_state ? 1 : 0,
 +		 pctl->drv_clock ? 1 : 0,
@@ -87,7 +105,8 @@ index 060fca1..8f006a0 100644
 +		 tcon_rate, hdmi_rate,
 +		 dw ? dw->pixel_clk : 0,
 +		 dw ? dw->tmds_clk : 0,
-+		 top_lock, top_clk_sel, top_pad_sel, top_cfg, top_stat);
++		 top_lock, top_clk_sel, top_pad_sel, top_cfg, top_stat,
++		 phy_conf0, phy_stat0, mc_phyrstz, mc_lockon, fc_invid, fc_gcp);
 +	env_set("opi_hdmi_diag", diag);
 +	env_set("opi_hdmi_diag_ok", "true");
 +	return 0;
