@@ -193,6 +193,25 @@ Current HDMI-power candidate:
   TCON clock to the HDMI node as `clk_tcon_tv`, preserving the existing
   `clk_hdmi`, `clk_hdmi_24M`, `rst_main`, and `rst_sub` entries.
 
+2026-07-03 A733 NVMe HDMI-power stock-display package:
+
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-nvme-scriptfirst-hdmi-power.fex`
+- Package SHA-256:
+  `4bcaf2bfa38c7308f717a6afeeb9a10a50b669dbe3ec7ceff258e469f8c648ae`
+- U-Boot item SHA-256:
+  `f557839b048b86a7b3dbeb72bf8d9b2e9a1dc6065d86e12ca81b786c938d4ae0`
+- Source package:
+  `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex`
+- This package applies the same HDMI power, CLDO2, and `clk_tcon_tv` DTB
+  corrections to the larger Orange Pi A733 NVMe vendor package. It preserves
+  the stock `U-Boot 2018.07-orangepi-config-dirty (Nov 21 2025 - 10:05:52
+  +0000)` payload and changes only the distro scan order plus embedded DTB.
+- The paired boot script stages `selector_logo_preinit=true` and
+  `selector_logo_hold=15`, so a successful HDMI fix should show the vendor
+  `sunxi_show_logo` output for a long, visible bootloader window before
+  extlinux continues.
+
 Installed framebuffer-test package:
 
 - Package SHA-256:
