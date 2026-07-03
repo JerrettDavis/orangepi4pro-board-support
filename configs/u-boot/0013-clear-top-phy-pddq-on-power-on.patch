@@ -1,0 +1,13 @@
+diff --git a/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/phy_top.c b/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/phy_top.c
+index 48ef492..c5cf6f1 100644
+--- a/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/phy_top.c
++++ b/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/phy_top.c
+@@ -270,7 +270,7 @@ void top_phy_power(top_phy_power_t type)
+ 	switch (type) {
+ 	case SUNXI_TOP_PHY_POWER_ON:
+ 		phy_reg->reg_0000.sun60i.phy_reset         = 0x1;
+-		phy_reg->reg_0000.sun60i.phy_pddq          = 0x1;
++		phy_reg->reg_0000.sun60i.phy_pddq          = 0x0;
+ 		phy_reg->reg_0000.sun60i.phy_txpwron       = 0x1;
+ 		phy_reg->reg_0000.sun60i.phy_enhpdrxsense  = 0x1;
+ 	break;

@@ -427,3 +427,26 @@ selector defaults while the factory display path is retested.
   `bootchooser=uboot-visual-hdmi20-pattern-ok` plus `opi_pre_hdmi=*`,
   `opi_pat_hdmipat=*`, and `opi_post_hdmi=*` fields containing
   `phy`, `stat`, `rst`, `lock`, `vid`, and `gcp` values.
+
+2026-07-03 top-PHY PDDQ package:
+
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-toppddq-1024x600.fex`
+- Package SHA-256:
+  `d16c515ab57b1f2747d3706973633eed2b7a8ea47c1f3f90fbf398e0b0f28f37`
+- U-Boot item SHA-256:
+  `9ae2c1938a1b6be74460d37780475b626e2d087157b41486d6d32b27d1527d74`
+- Source package:
+  `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex`
+- Build command:
+  `HOME=/root APPLY_DISPLAY_MODE_PATCH=true scripts/build-vendor-uboot.sh --bootmenu --clean`
+- Rationale: the previous HDMI20-pattern reboot proved the script path and
+  pattern register writes ran, but the monitor still had no visible pre-OS
+  image. The captured top-PHY register was `top0_00000017`, which leaves the
+  sun60i top-PHY `phy_pddq` bit asserted while reset, TX power, and HPD sense
+  are also asserted. This package clears `phy_pddq` in the top-PHY ON path so
+  the HDMI pads are not held in a power-down state during U-Boot output.
+- Expected comparison after reboot: `top0_00000015` or another value with bit 1
+  clear, plus the same `uboot-visual-hdmi20-pattern-ok` marker. If the monitor
+  still has no pre-OS signal, continue from the new `top0`, `phy`, `stat`,
+  `lock`, and pattern fields rather than changing selector/menu logic.
