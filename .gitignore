@@ -4,7 +4,9 @@
 *.log
 *.o
 *.ko
+*.pyc
 *.tmp
+__pycache__/
 packages/qdtech-touch-x11/bin/qdtech-touch-x11
 packages/qdtech-touch-x11/bin/qdtech-usb-dump
 .build/
