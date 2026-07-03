@@ -1072,6 +1072,38 @@ delivering a valid visible signal until Linux later performs its full
 - Expected reboot evidence: `/proc/cmdline` should gain
   `opi_logo_recover=post-retry-...`. A successful visual fix should also move
   `opi_logo_hdmi` away from `phy00,stat00,rst00,lock00` before Linux starts.
+- Reboot result: Linux reached NVMe and U-Boot diagnostics stayed present, but
+  `opi_logo_recover` was still absent and `opi_logo_hdmi` remained
+  `phy00,stat00,rst00,lock00`. The post-logo guard still did not decide to
+  retry, so the next package reports skip reasons and bases the retry decision
+  directly on the DW/SNPS lock registers.
+
+2026-07-03 relaxed post-logo HDMI retry package:
+
+- Build command:
+  `scripts/build-vendor-uboot.sh --scriptfirst-diag-modeclock --clean`
+- Build artifact:
+  `.build/u-boot/artifacts/scriptfirst-diag-modeclock/u-boot-sun60iw2p1.bin`
+- Build artifact SHA-256:
+  `6337413c6991aed676e669e279db964e72163372626f84953a3e8c36e8a918bb`
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-scriptfirst-diag-modeclock-force1024-hdmitvclk-topmc-relaxedretry.fex`
+- Package SHA-256:
+  `4e0941a6eb25f7a9e40a7496dc6957eea43f533e636b85813ee972ae5bf7cf9a`
+- U-Boot item SHA-256:
+  `6337413c6991aed676e669e279db964e72163372626f84953a3e8c36e8a918bb`
+- Patch:
+  `configs/u-boot/0032-relax-hdmi-logo-retry-and-report-skip.patch`
+- Change: the post-logo retry now reads `PHY_STAT0` and `MC_LOCKONCLOCK`
+  directly after `display_enable()`. If lock is missing, it retries
+  `display_disable()`/`display_init()`/`display_enable()` without requiring
+  `state->is_enable` or a connector type match. If it skips, it records either
+  `opi_logo_recover=post-skip-not-init` or `opi_logo_recover=post-skip-locked`.
+- Expected reboot evidence: `/proc/cmdline` must include
+  `opi_logo_recover=post-retry-...`, `post-skip-not-init`, or
+  `post-skip-locked`. The visual target remains a visible bootloader screen;
+  the diagnostic target is to prove whether the retry is executing and whether
+  HDMI lock changes before Linux starts.
 
 2026-07-03 forced cyberdeck-mode plus HDMI clock-only DTB package:
 

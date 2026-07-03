@@ -1,0 +1,64 @@
+diff --git a/drivers/video/drm/sunxi_drm_drv.c b/drivers/video/drm/sunxi_drm_drv.c
+--- a/drivers/video/drm/sunxi_drm_drv.c
++++ b/drivers/video/drm/sunxi_drm_drv.c
+@@ -980,6 +980,31 @@ static bool display_is_stale_hdmi(struct display_state *state,
+ 	u8 phy = 0;
+ 	u8 lock = 0;
+ 
++	if (phy_stat0)
++		*phy_stat0 = 0;
++	if (mc_lockon)
++		*mc_lockon = 0;
++
++	if (!state || !state->is_init)
++		return false;
++
++	if (!state->conn_state.connector)
++		return false;
++
++	phy = (u8)dw_read(PHY_STAT0);
++	lock = (u8)dw_read(MC_LOCKONCLOCK);
++
++	if (phy_stat0)
++		*phy_stat0 = phy;
++	if (mc_lockon)
++		*mc_lockon = lock;
++
++	if ((phy & PHY_STAT0_TX_PHY_LOCK_MASK) &&
++	    (lock & MC_LOCKONCLOCK_TCLK_MASK) &&
++	    (lock & MC_LOCKONCLOCK_PCLK_MASK))
++		return false;
++
++	return true;
++}
++
++static bool display_is_stale_hdmi_state_strict(struct display_state *state,
++				  u8 *phy_stat0, u8 *mc_lockon)
++{
++	u8 phy = 0;
++	u8 lock = 0;
++
+ 	if (phy_stat0)
+ 		*phy_stat0 = 0;
+ 	if (mc_lockon)
+@@ -1036,11 +1061,19 @@ static int display_retry_unlocked_hdmi_after_logo(struct display_state *state)
+ 	int enable_ret;
+ 	char recover[96];
+ 
+-	if (!display_is_stale_hdmi(state, &pre_phy, &pre_lock))
++	if (!state || !state->is_init) {
++		env_set("opi_logo_recover", "post-skip-not-init");
++		return 0;
++	}
++
++	pre_phy = (u8)dw_read(PHY_STAT0);
++	pre_lock = (u8)dw_read(MC_LOCKONCLOCK);
++	if ((pre_phy & PHY_STAT0_TX_PHY_LOCK_MASK) &&
++	    (pre_lock & MC_LOCKONCLOCK_TCLK_MASK) &&
++	    (pre_lock & MC_LOCKONCLOCK_PCLK_MASK)) {
++		env_set("opi_logo_recover", "post-skip-locked");
+ 		return 0;
++	}
+ 
+ 	printf("sunxi-drm: HDMI still unlocked after logo enable phy%02x lock%02x; retry\n",
+ 	       pre_phy, pre_lock);
