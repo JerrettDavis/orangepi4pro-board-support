@@ -1,0 +1,45 @@
+diff --git a/drivers/video/drm/sunxi_drm_hdmi.c b/drivers/video/drm/sunxi_drm_hdmi.c
+index 8f006a0..f30f9de 100644
+--- a/drivers/video/drm/sunxi_drm_hdmi.c
++++ b/drivers/video/drm/sunxi_drm_hdmi.c
+@@ -377,18 +377,25 @@
+-static int _sunxi_drv_hdmi_set_rate(struct sunxi_hdmi_res_s *p_clk)
++static int _sunxi_drv_hdmi_set_rate(struct sunxi_drm_hdmi *hdmi)
+ {
++	struct sunxi_hdmi_res_s *p_clk = NULL;
+ 	unsigned long clk_rate = 0;
++	unsigned long mode_rate = 0;
+ 
+-	if (IS_ERR_OR_NULL(p_clk)) {
+-		shdmi_err(p_clk);
++	if (IS_ERR_OR_NULL(hdmi)) {
++		shdmi_err(hdmi);
+ 		return -1;
+ 	}
++	p_clk = &hdmi->hdmi_res;
+ 
+-	clk_rate = clk_get_rate(p_clk->clk_tcon_tv);
++	if (!IS_ERR_OR_NULL(p_clk->clk_tcon_tv))
++		clk_rate = clk_get_rate(p_clk->clk_tcon_tv);
++	if (hdmi->drm_mode.clock)
++		mode_rate = (unsigned long)hdmi->drm_mode.clock * 1000UL;
++	if (mode_rate && (clk_rate == 0 || clk_rate == 24000000))
++		clk_rate = mode_rate;
+ 	if (clk_rate == 0) {
+ 		hdmi_err("tcon clock rate is 0");
+ 		return -1;
+ 	}
+ 
+-	clk_set_rate(p_clk->clk_hdmi, clk_rate);
+-	return 0;
++	return clk_set_rate(p_clk->clk_hdmi, clk_rate);
+ }
+@@ -405,7 +413,7 @@ static int _sunxi_drv_hdmi_enable(struct sunxi_drm_hdmi *hdmi)
+ 		return 0;
+ 	}
+ 
+-	_sunxi_drv_hdmi_set_rate(&hdmi->hdmi_res);
++	_sunxi_drv_hdmi_set_rate(hdmi);
+ 
+ 	/* hdmi driver video ops enable */
+ 	sunxi_hdmi_config();

@@ -28,9 +28,8 @@ This is file-only. It:
     uhdmi_fast_output;
   - adds a cldo2 regulator node matching the working Linux DTB and points
     hdmi_power1 at it by phandle;
-  - adds the clk_tcon_tv clock-name to the HDMI node when the packed U-Boot
-    DTB omits it, so the HDMI driver can set the HDMI clock from the active
-    TCON clock before enabling output;
+  - normalizes the HDMI clock bindings so clk_hdmi points at the programmable
+    hdmi_tv clock and the original HDMI gate is exposed as clk_bus_hdmi;
   - optionally sets uhdmi_fast_output=1 and replaces U-Boot's compiled HDMI
     default 1920x1080 mode with an explicit fallback timing;
   - optionally marks the HDMI display route force-output so display_init does
@@ -252,22 +251,66 @@ if [ "$force_route" = true ]; then
   fdtput "$work_dir/u-boot.dtb" "$route_node" force-output
 fi
 
-if ! fdtget "$work_dir/u-boot.dtb" "$hdmi_node" clock-names | grep -qw 'clk_tcon_tv'; then
-  tcon3_node=$soc_node/tcon3@5730000
-  if ! fdtget "$work_dir/u-boot.dtb" "$tcon3_node" clocks >/dev/null 2>&1; then
-    printf 'ERROR: could not locate tcon3 clocks for HDMI clk_tcon_tv patch\n' >&2
+tcon3_node=$soc_node/tcon3@5730000
+if ! fdtget "$work_dir/u-boot.dtb" "$tcon3_node" clocks >/dev/null 2>&1; then
+  printf 'ERROR: could not locate tcon3 clocks for HDMI clock patch\n' >&2
+  exit 1
+fi
+read -r tcon3_clock _ < <(fdtget "$work_dir/u-boot.dtb" "$tcon3_node" clocks)
+
+hdmi_tv_node=/clocks/hdmi_tv
+hdmi_gate_node=/clocks/hdmi_gate
+if ! fdtget "$work_dir/u-boot.dtb" "$hdmi_tv_node" clock-output-names >/dev/null 2>&1; then
+  printf 'ERROR: could not locate hdmi_tv clock node in embedded DTB\n' >&2
+  exit 1
+fi
+if ! fdtget "$work_dir/u-boot.dtb" "$hdmi_gate_node" phandle >/dev/null 2>&1; then
+  printf 'ERROR: could not locate hdmi_gate phandle in embedded DTB\n' >&2
+  exit 1
+fi
+
+hdmi_tv_phandle=$(fdtget "$work_dir/u-boot.dtb" "$hdmi_tv_node" phandle 2>/dev/null || true)
+if [ -z "$hdmi_tv_phandle" ]; then
+  hdmi_tv_phandle=0x2f1
+  if fdtdump "$work_dir/u-boot.dtb" 2>/dev/null | grep -Eq "<0x0*2f1>"; then
+    printf 'ERROR: chosen hdmi_tv phandle 0x2f1 already exists in embedded DTB\n' >&2
     exit 1
   fi
-  read -r tcon3_clock _ < <(fdtget "$work_dir/u-boot.dtb" "$tcon3_node" clocks)
-  read -r -a hdmi_clocks < <(fdtget "$work_dir/u-boot.dtb" "$hdmi_node" clocks)
-  read -r -a hdmi_clock_names < <(fdtget "$work_dir/u-boot.dtb" "$hdmi_node" clock-names)
-  hdmi_clocks_hex=("$(printf '0x%x' "$tcon3_clock")")
-  for clock in "${hdmi_clocks[@]}"; do
-    hdmi_clocks_hex+=("$(printf '0x%x' "$clock")")
-  done
-  fdtput -t x "$work_dir/u-boot.dtb" "$hdmi_node" clocks "${hdmi_clocks_hex[@]}"
-  fdtput -t s "$work_dir/u-boot.dtb" "$hdmi_node" clock-names clk_tcon_tv "${hdmi_clock_names[@]}"
+  fdtput -t x "$work_dir/u-boot.dtb" "$hdmi_tv_node" phandle "$hdmi_tv_phandle"
 fi
+hdmi_gate_phandle=$(fdtget "$work_dir/u-boot.dtb" "$hdmi_gate_node" phandle)
+
+read -r -a hdmi_clocks < <(fdtget "$work_dir/u-boot.dtb" "$hdmi_node" clocks)
+read -r -a hdmi_clock_names < <(fdtget "$work_dir/u-boot.dtb" "$hdmi_node" clock-names)
+hdmi_24m_clock=
+rst_main_clock=
+rst_sub_clock=
+for i in "${!hdmi_clock_names[@]}"; do
+  case "${hdmi_clock_names[$i]}" in
+    clk_hdmi_24M)
+      hdmi_24m_clock=${hdmi_clocks[$i]:-}
+      ;;
+    rst_main)
+      rst_main_clock=${hdmi_clocks[$i]:-}
+      ;;
+    rst_sub)
+      rst_sub_clock=${hdmi_clocks[$i]:-}
+      ;;
+  esac
+done
+if [ -z "$hdmi_24m_clock" ] || [ -z "$rst_main_clock" ] || [ -z "$rst_sub_clock" ]; then
+  printf 'ERROR: could not map existing HDMI clock/reset bindings\n' >&2
+  exit 1
+fi
+fdtput -t x "$work_dir/u-boot.dtb" "$hdmi_node" clocks \
+  "$(printf '0x%x' "$tcon3_clock")" \
+  "$(printf '0x%x' "$hdmi_tv_phandle")" \
+  "$(printf '0x%x' "$hdmi_24m_clock")" \
+  "$(printf '0x%x' "$hdmi_gate_phandle")" \
+  "$(printf '0x%x' "$rst_main_clock")" \
+  "$(printf '0x%x' "$rst_sub_clock")"
+fdtput -t s "$work_dir/u-boot.dtb" "$hdmi_node" clock-names \
+  clk_tcon_tv clk_hdmi clk_hdmi_24M clk_bus_hdmi rst_main rst_sub
 
 test "$(fdtget "$work_dir/u-boot.dtb" "$cldo2_node" regulator-name)" = "axp8191-cldo2" \
   || {
@@ -292,6 +335,11 @@ test "$(fdtget "$work_dir/u-boot.dtb" "$hdmi_node" uhdmi_power_count)" = "2" \
 fdtget "$work_dir/u-boot.dtb" "$hdmi_node" clock-names | grep -qw 'clk_tcon_tv' \
   || {
     printf 'ERROR: clk_tcon_tv HDMI clock patch did not stick\n' >&2
+    exit 1
+  }
+test "$(fdtget "$work_dir/u-boot.dtb" "$hdmi_node" clock-names)" = "clk_tcon_tv clk_hdmi clk_hdmi_24M clk_bus_hdmi rst_main rst_sub" \
+  || {
+    printf 'ERROR: HDMI clock binding normalization did not stick\n' >&2
     exit 1
   }
 if [ "$force_route" = true ]; then

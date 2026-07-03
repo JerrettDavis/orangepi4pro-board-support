@@ -313,6 +313,32 @@ Current HDMI-power candidate:
   HDMI power, CLDO2, `clk_tcon_tv`, `uhdmi_fast_output=1`, 720p fallback, and
   force-route changes.
 
+2026-07-03 custom bootmenu HDMI clock-route 720p package:
+
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-clockroute-720p.fex`
+- Package SHA-256:
+  `400c61781601f58bef78ad581be499b733bc005a0255b5680cdf465951f440f9`
+- U-Boot item SHA-256:
+  `042759f9e366580405b8716a2815a2c0ab56fd76d218d5bb1a3c15864c9c973b`
+- Source package:
+  `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex`
+- Build commands:
+  `APPLY_DISPLAY_MODE_PATCH=false scripts/build-vendor-uboot.sh --bootmenu --clean`
+  `scripts/prepare-vendor-sd-hdmi-power-package.sh --uboot .build/u-boot/artifacts/bootmenu/u-boot-sun60iw2p1.bin --hdmi-default-mode 1280x720 --force-route --vendor /usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex --output /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-clockroute-720p.fex`
+- Rationale: diagnostics from the previous package showed the DRM route,
+  framebuffer, HPD, selected mode, and top PHY lock were all present, but the
+  HDMI/TCON clock readings stayed at `24000000` while the selected pixel and
+  TMDS clock were `74250` kHz. The packed U-Boot DTB exposed `clk_hdmi_gate`
+  as `clk_hdmi`, so `_sunxi_drv_hdmi_set_rate()` was not programming the
+  actual HDMI TV clock. This package assigns `/clocks/hdmi_tv` a phandle,
+  exposes it as `clk_hdmi`, preserves the original gate as `clk_bus_hdmi`, and
+  adds a U-Boot fallback that programs `clk_hdmi` from `drm_mode.clock` when
+  the TCON clock reads as missing or stale 24 MHz.
+- Extracted package DTB check:
+  `hdmi clocks = 131 753 142 141 143 144`
+  `clock-names = clk_tcon_tv clk_hdmi clk_hdmi_24M clk_bus_hdmi rst_main rst_sub`
+
 Installed framebuffer-test package:
 
 - Package SHA-256:
