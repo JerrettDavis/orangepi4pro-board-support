@@ -78,6 +78,15 @@ grep -aFq 'opi_bootselect' "$uboot" \
     printf 'ERROR: U-Boot artifact does not contain DM-video selector command\n' >&2
     exit 1
   }
+if grep -aFq 'embedded boot.bmp array' "$uboot"; then
+  printf 'ERROR: U-Boot artifact still contains the embedded boot.bmp fallback\n' >&2
+  exit 1
+fi
+grep -aFq '/boot/boot1.bmp' "$uboot" \
+  || {
+    printf 'ERROR: U-Boot artifact does not contain A733 file-backed boot1.bmp loader\n' >&2
+    exit 1
+  }
 
 mkdir -p "$(dirname "$output")"
 "$repo_root/scripts/sunxi-toc1-package.py" repack \
@@ -100,6 +109,15 @@ grep -aFq 'U-Boot Boot Menu' "$output" \
 grep -aFq 'opi_bootselect' "$output" \
   || {
     printf 'ERROR: output package does not contain DM-video selector command\n' >&2
+    exit 1
+  }
+if grep -aFq 'embedded boot.bmp array' "$output"; then
+  printf 'ERROR: output package still contains the embedded boot.bmp fallback\n' >&2
+  exit 1
+fi
+grep -aFq '/boot/boot1.bmp' "$output" \
+  || {
+    printf 'ERROR: output package does not contain A733 file-backed boot1.bmp loader\n' >&2
     exit 1
   }
 
