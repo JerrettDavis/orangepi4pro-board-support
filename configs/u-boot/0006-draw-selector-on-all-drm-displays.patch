@@ -1,0 +1,134 @@
+diff --git a/cmd/opi_bootselect.c b/cmd/opi_bootselect.c
+index 4aa2b4f9ee..e2a30bc6c5 100644
+--- a/cmd/opi_bootselect.c
++++ b/cmd/opi_bootselect.c
+@@ -234,6 +234,40 @@ static void opi_draw_selector(struct opi_draw *draw, int selected,
+ 	opi_video_flush(draw);
+ }
+ 
++struct opi_draw_all_ctx {
++	int selected;
++	int remaining;
++	int rendered;
++};
++
++static int opi_draw_one_drm_fb(struct drm_framebuffer *fb, void *data)
++{
++	struct opi_draw_all_ctx *ctx = data;
++	struct opi_draw draw;
++
++	if (!fb || !fb->dma_addr || !fb->width || !fb->height || !fb->pitches[0])
++		return 0;
++
++	memset(&draw, 0, sizeof(draw));
++	draw.drm_fb = fb;
++	draw.fb = map_sysmem(fb->dma_addr, fb->buf_size);
++	draw.width = fb->width;
++	draw.height = fb->height;
++	draw.line_length = fb->pitches[0];
++	draw.bpix = opi_bpix_from_depth(fb->format->depth);
++	opi_draw_selector(&draw, ctx->selected, ctx->remaining);
++	ctx->rendered++;
++
++	return 0;
++}
++
++static void opi_draw_all(struct opi_draw *fallback, int selected, int remaining)
++{
++	struct opi_draw_all_ctx ctx = { selected, remaining, 0 };
++
++	if (drm_fb_for_each_enabled(opi_draw_one_drm_fb, &ctx) >= 0 && ctx.rendered)
++		return;
++
++	opi_draw_selector(fallback, selected, remaining);
++}
++
+ static int opi_read_key(void)
+ {
+ 	int c;
+@@ -299,7 +333,7 @@ static int do_opi_bootselect(cmd_tbl_t *cmdtp, int flag, int argc,
+ 			remaining = 0;
+ 		if (remaining != last_remaining) {
+-			opi_draw_selector(&draw, selected, remaining);
++			opi_draw_all(&draw, selected, remaining);
+ 			last_remaining = remaining;
+ 		}
+ 
+@@ -330,7 +364,7 @@ static int do_opi_bootselect(cmd_tbl_t *cmdtp, int flag, int argc,
+ 		printf("opi_bootselect: selected NVMe\n");
+ 	}
+ 
+-	opi_draw_selector(&draw, selected, -1);
++	opi_draw_all(&draw, selected, -1);
+ 	mdelay(350);
+ 	return CMD_RET_SUCCESS;
+ }
+diff --git a/drivers/video/drm/sunxi_drm_drv.c b/drivers/video/drm/sunxi_drm_drv.c
+index a5f68ce7ce..653a65c535 100644
+--- a/drivers/video/drm/sunxi_drm_drv.c
++++ b/drivers/video/drm/sunxi_drm_drv.c
+@@ -1459,6 +1459,47 @@ struct drm_framebuffer *drm_fb_lock(void)
+ 	return NULL;
+ }
+ 
++int drm_fb_for_each_enabled(int (*fn)(struct drm_framebuffer *fb, void *data),
++			    void *data)
++{
++	struct sunxi_drm_device *drm = sunxi_drm_device_get();
++	struct drm_framebuffer *fb = NULL;
++	struct display_state *state = NULL;
++	int count = 0;
++	int ret;
++
++	if (!fn)
++		return -EINVAL;
++
++	if (!drm || list_empty(&drm->display_list)) {
++		DRM_ERROR("Get sunxi drm device fail!\n");
++		return -ENODEV;
++	}
++
++	sunxi_drm_for_each_display(state, drm) {
++		ret = display_check(state);
++		if (ret) {
++			DRM_ERROR("display check fail!\n");
++			continue;
++		}
++		state->backlight = true;
++		ret = display_enable(state);
++		if (ret) {
++			DRM_ERROR("display enable fail!\n");
++			continue;
++		}
++		if (!state->is_enable)
++			continue;
++
++		fb = drm_framebuffer_lookup(drm, state->fb_id);
++		if (!fb)
++			continue;
++
++		ret = fn(fb, data);
++		if (ret)
++			return ret;
++		count++;
++	}
++
++	return count;
++}
++
+ static int do_sunxi_logo_show(struct cmd_tbl_s *cmdtp, int flag, int argc,
+ 			char *const argv[])
+ {
+diff --git a/include/drm/drm_framebuffer.h b/include/drm/drm_framebuffer.h
+index eade13a0e2..c44fe1ce50 100644
+--- a/include/drm/drm_framebuffer.h
++++ b/include/drm/drm_framebuffer.h
+@@ -107,6 +107,8 @@ struct drm_framebuffer {
+ };
+ 
+ struct drm_framebuffer *drm_fb_lock(void);
++int drm_fb_for_each_enabled(int (*fn)(struct drm_framebuffer *fb, void *data),
++			    void *data);
+ int drm_framebuffer_alloc(struct sunxi_drm_device *drm, struct drm_mode_fb_cmd2 *cmd);
+ int drm_framebuffer_free(struct sunxi_drm_device *drm, struct drm_framebuffer *fb);
+ struct drm_framebuffer *drm_framebuffer_lookup(struct sunxi_drm_device *drm, int fb_id);
