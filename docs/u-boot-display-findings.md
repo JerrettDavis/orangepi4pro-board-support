@@ -2,6 +2,30 @@
 
 Captured 2026-07-02 after the video-first selector test hung before Linux.
 
+2026-07-03 TOP PHY auto-calculation candidate:
+
+- Linux becomes visible only after it runs a later HDMI disable/mode-set/enable
+  cycle. In that path it logs `top phy auto calculate done` and programs the
+  49 MHz `1024x600` mode with TOP PHY PLL value `0xE8193000`.
+- The vendor U-Boot `phy_top.c` code was older than the kernel copy. It used a
+  fixed table and did not have the Linux TOP PHY auto-calculation path for the
+  cyberdeck panel's exact 49 MHz pixel clock.
+- Patch `configs/u-boot/0021-sync-linux-top-phy-pll-autocal.patch` ports only
+  that bounded TOP PHY PLL calculation into the U-Boot HDMI path. It does not
+  enable the unsafe full DRM reinit command.
+- The first reboot test should keep the existing 15-second HDMI20 pattern stage
+  and check whether the U-Boot-exported HDMI diagnostics move from
+  `top10_00000033` / `stat03` toward Linux's visible `top10=0x37` /
+  `PHY_STAT0=0xf3` state.
+- Test package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-topphy-autocal-1024x600.fex`
+- Package SHA-256:
+  `1e91636163adfb3cb9de1c7051e269596d5547877859edd17c82087b3506087f`
+- Packaged U-Boot item SHA-256:
+  `837084d8d16916713c8ae23e2b7690eb747373be6143914347df70dba9c52767`
+- Raw built U-Boot artifact SHA-256:
+  `81e5d7f9fc8fe52c777ee805cde0b4d1d1407004f501daa9f22aaca9eb145fde`
+
 Known-good control-flow result:
 
 - A script-first U-Boot package did run `/boot/boot.scr` before extlinux.

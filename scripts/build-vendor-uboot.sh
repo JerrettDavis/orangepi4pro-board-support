@@ -32,6 +32,7 @@ drm_reinit_visual_diag_patch=${DRM_REINIT_VISUAL_DIAG_PATCH:-"$repo_root/configs
 tcon_hdmi_clock_sequence_patch=${TCON_HDMI_CLOCK_SEQUENCE_PATCH:-"$repo_root/configs/u-boot/0018-use-linux-like-hdmi-tcon-clock-sequence.patch"}
 hdmi_fc_iteration_patch=${HDMI_FC_ITERATION_PATCH:-"$repo_root/configs/u-boot/0019-sync-linux-hdmi-fc-iteration-and-diag.patch"}
 hdmi_phy_rxsense_patch=${HDMI_PHY_RXSENSE_PATCH:-"$repo_root/configs/u-boot/0020-wait-for-snps-phy-rxsense.patch"}
+hdmi_top_phy_autocal_patch=${HDMI_TOP_PHY_AUTOCAL_PATCH:-"$repo_root/configs/u-boot/0021-sync-linux-top-phy-pll-autocal.patch"}
 apply_drm_reinit_patch=${APPLY_DRM_REINIT_PATCH:-false}
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
 cross_compile=${CROSS_COMPILE:-arm-linux-gnueabi-}
@@ -295,6 +296,17 @@ if [ "$mode" = bootmenu ]; then
     "$work_dir/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/phy_snps.c" \
     || {
       printf 'ERROR: HDMI PHY RX-sense patch did not apply cleanly\n' >&2
+      exit 1
+    }
+  if [ ! -r "$hdmi_top_phy_autocal_patch" ]; then
+    printf 'ERROR: HDMI TOP PHY autocal patch not readable: %s\n' "$hdmi_top_phy_autocal_patch" >&2
+    exit 1
+  fi
+  git -C "$work_dir" apply --recount "$hdmi_top_phy_autocal_patch"
+  grep -q '_top_phy_pll_auto_cal' \
+    "$work_dir/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/phy_top.c" \
+    || {
+      printf 'ERROR: HDMI TOP PHY autocal patch did not apply cleanly\n' >&2
       exit 1
     }
   if [ "$apply_drm_reinit_patch" = true ]; then
