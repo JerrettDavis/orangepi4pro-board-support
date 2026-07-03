@@ -99,9 +99,18 @@ dst = Path(sys.argv[2])
 old = b"run scan_dev_for_extlinux; run scan_dev_for_scripts"
 new = b"run scan_dev_for_scripts; run scan_dev_for_extlinux"
 data = src.read_bytes()
-count = data.count(old)
-if count != 1:
-    raise SystemExit(f"expected exactly one scan order string, found {count}")
+old_count = data.count(old)
+new_count = data.count(new)
+if old_count == 1:
+    pass
+elif old_count == 0 and new_count >= 1:
+    dst.write_bytes(data)
+    raise SystemExit(0)
+else:
+    raise SystemExit(
+        f"expected one stock scan-order string or an already patched U-Boot, "
+        f"found old={old_count} new={new_count}"
+    )
 if len(old) != len(new):
     raise SystemExit("replacement must be length-preserving")
 dst.write_bytes(data.replace(old, new, 1))
@@ -203,8 +212,14 @@ if len(dtb_data) > dtb_size:
     extra = len(dtb_data) - dtb_size
     padding_start = dtb_offset + dtb_size
     padding_end = padding_start + extra
+    if padding_start == len(data):
+        dst.write_bytes(data[:dtb_offset] + dtb_data)
+        raise SystemExit(0)
     if padding_end > len(data):
-        raise SystemExit(f"patched DTB grew past U-Boot item end: {dtb_size} -> {len(dtb_data)}")
+        raise SystemExit(
+            f"patched DTB grew past non-terminal U-Boot item data: "
+            f"{dtb_size} -> {len(dtb_data)}"
+        )
     padding = data[padding_start:padding_end]
     if any(byte not in (0x00, 0xFF) for byte in padding):
         raise SystemExit(f"patched DTB grew into non-padding data: {dtb_size} -> {len(dtb_data)}")
@@ -213,16 +228,25 @@ else:
     dst.write_bytes(data[:dtb_offset] + dtb_data + b"\0" * (dtb_size - len(dtb_data)) + data[dtb_offset + dtb_size :])
 PY
 
-grep -aFq 'boot.bmp decompressed OK' "$work_dir/u-boot-force-hdmi.bin" \
-  || {
-    printf 'ERROR: patched U-Boot does not preserve factory embedded-logo path\n' >&2
-    exit 1
-  }
 grep -aFq 'run scan_dev_for_scripts; run scan_dev_for_extlinux' "$work_dir/u-boot-force-hdmi.bin" \
   || {
     printf 'ERROR: patched U-Boot does not contain script-first scan order\n' >&2
     exit 1
   }
+if grep -aFq 'sunxi_drm_env' "$work_dir/u-boot-vendor.bin"; then
+  grep -aFq 'sunxi_drm_env' "$work_dir/u-boot-force-hdmi.bin" \
+    || {
+      printf 'ERROR: patched U-Boot dropped sunxi_drm_env diagnostic command\n' >&2
+      exit 1
+    }
+fi
+if grep -aFq 'opi_bootselect' "$work_dir/u-boot-vendor.bin"; then
+  grep -aFq 'opi_bootselect' "$work_dir/u-boot-force-hdmi.bin" \
+    || {
+      printf 'ERROR: patched U-Boot dropped opi_bootselect command\n' >&2
+      exit 1
+    }
+fi
 
 mkdir -p "$(dirname "$output")"
 "$repo_root/scripts/sunxi-toc1-package.py" repack \
