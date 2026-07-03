@@ -22,6 +22,9 @@ This is file-only. It:
     uhdmi_fast_output;
   - adds a cldo2 regulator node matching the working Linux DTB and points
     hdmi_power1 at it by phandle;
+  - adds the clk_tcon_tv clock-name to the HDMI node when the packed U-Boot
+    DTB omits it, so the HDMI driver can set the HDMI clock from the active
+    TCON clock before enabling output;
   - rebuilds the package checksum.
 
 It does not write block devices, MTD, SPI, partitions, filesystems, or firmware.
@@ -192,6 +195,23 @@ fdtput -t x "$work_dir/u-boot.dtb" "$hdmi_node" uhdmi_power_count 0x2
 fdtput -t x "$work_dir/u-boot.dtb" "$hdmi_node" uhdmi_resistor_select 0x1
 fdtput -t x "$work_dir/u-boot.dtb" "$hdmi_node" uhdmi_fast_output 0x0
 
+if ! fdtget "$work_dir/u-boot.dtb" "$hdmi_node" clock-names | grep -qw 'clk_tcon_tv'; then
+  tcon3_node=$soc_node/tcon3@5730000
+  if ! fdtget "$work_dir/u-boot.dtb" "$tcon3_node" clocks >/dev/null 2>&1; then
+    printf 'ERROR: could not locate tcon3 clocks for HDMI clk_tcon_tv patch\n' >&2
+    exit 1
+  fi
+  read -r tcon3_clock _ < <(fdtget "$work_dir/u-boot.dtb" "$tcon3_node" clocks)
+  read -r -a hdmi_clocks < <(fdtget "$work_dir/u-boot.dtb" "$hdmi_node" clocks)
+  read -r -a hdmi_clock_names < <(fdtget "$work_dir/u-boot.dtb" "$hdmi_node" clock-names)
+  hdmi_clocks_hex=("$(printf '0x%x' "$tcon3_clock")")
+  for clock in "${hdmi_clocks[@]}"; do
+    hdmi_clocks_hex+=("$(printf '0x%x' "$clock")")
+  done
+  fdtput -t x "$work_dir/u-boot.dtb" "$hdmi_node" clocks "${hdmi_clocks_hex[@]}"
+  fdtput -t s "$work_dir/u-boot.dtb" "$hdmi_node" clock-names clk_tcon_tv "${hdmi_clock_names[@]}"
+fi
+
 test "$(fdtget "$work_dir/u-boot.dtb" "$cldo2_node" regulator-name)" = "axp8191-cldo2" \
   || {
     printf 'ERROR: cldo2 regulator node was not created correctly\n' >&2
@@ -210,6 +230,11 @@ test "$(fdtget "$work_dir/u-boot.dtb" "$hdmi_node" hdmi_power1)" = "752" \
 test "$(fdtget "$work_dir/u-boot.dtb" "$hdmi_node" uhdmi_power_count)" = "2" \
   || {
     printf 'ERROR: uhdmi_power_count patch did not stick\n' >&2
+    exit 1
+  }
+fdtget "$work_dir/u-boot.dtb" "$hdmi_node" clock-names | grep -qw 'clk_tcon_tv' \
+  || {
+    printf 'ERROR: clk_tcon_tv HDMI clock patch did not stick\n' >&2
     exit 1
   }
 
@@ -266,5 +291,6 @@ printf '\nPatched embedded U-Boot DTB HDMI power:\n'
 printf '  dcdc2_phandle=%s\n' "$dcdc2_phandle"
 printf '  cldo2_phandle=%s\n' "$cldo2_phandle"
 printf '  uhdmi_power_count=2\n'
+printf '  clk_tcon_tv=enabled\n'
 printf '\nPrepared vendor SD HDMI-power package:\n'
 sha256sum "$output"

@@ -169,6 +169,29 @@ Current HDMI-power candidate:
   and re-enable backlight. The diagnostic string now includes `fbid`, `plane`,
   and `en` fields, for example `fbid=0,plane=0,en=1` when the primary plane
   commit succeeds.
+- The reboot with this package reported
+  `opi_fb_fbtest=ok,w=1024,h=600,addr=b3dfe000,size=2457600,fbid=0,plane=0,en=1`.
+  That proves the active framebuffer was bound to the primary plane without a
+  U-Boot error. If the screen is still black, the remaining suspect is HDMI
+  transmitter clock/PHY setup rather than selector rendering.
+
+2026-07-03 HDMI TCON-clock diagnostic package:
+
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-fbtest-planecommit-hdmi-power-tconclk.fex`
+- Package SHA-256:
+  `2a4268c4dc2ce8f5731c87390e555ceeabd12b0f4223739675bbb2bb374154a9`
+- U-Boot item SHA-256:
+  `78d6733557ffa96952cdbe949268adc427ce8ad287d4049f829e44117b73798b`
+- Recovery backup:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260703T053453Z.bin`
+- Recovery backup SHA-256:
+  `ef4edba61f9d29244dee447171b2281322bc22f1318f8289d3b7389977168df9`
+- The packed U-Boot HDMI node did not expose a `clk_tcon_tv` clock-name even
+  though `_sunxi_drv_hdmi_set_rate()` reads it and uses it to set `clk_hdmi`.
+  `scripts/prepare-vendor-sd-hdmi-power-package.sh` now prepends the active
+  TCON clock to the HDMI node as `clk_tcon_tv`, preserving the existing
+  `clk_hdmi`, `clk_hdmi_24M`, `rst_main`, and `rst_sub` entries.
 
 Installed framebuffer-test package:
 
