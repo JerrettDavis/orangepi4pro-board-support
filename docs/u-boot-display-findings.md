@@ -1041,6 +1041,37 @@ delivering a valid visible signal until Linux later performs its full
   `/proc/cmdline` gains `opi_logo_recover=stale-reinit-...`, and if this is
   the missing re-enable point, `opi_logo_hdmi` moves away from
   `phy00,stat00,rst00,lock00` before Linux starts.
+- Reboot result: Linux reached NVMe and diagnostics stayed present, but
+  `opi_logo_recover` was absent and `opi_logo_hdmi` still reported
+  `phy00,stat00,rst00,lock00`. That means the pre-logo stale check did not
+  match the state at its call site; after the normal logo path returns,
+  U-Boot still thinks HDMI-A is initialized/enabled while the DW/SNPS core is
+  unlocked.
+
+2026-07-03 post-logo HDMI lock retry package:
+
+- Build command:
+  `scripts/build-vendor-uboot.sh --scriptfirst-diag-modeclock --clean`
+- Build artifact:
+  `.build/u-boot/artifacts/scriptfirst-diag-modeclock/u-boot-sun60iw2p1.bin`
+- Build artifact SHA-256:
+  `f5f812a752f8dfb1674bf39c09e6130024d75498ffbf2a01db3392cbe30f4eab`
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-scriptfirst-diag-modeclock-force1024-hdmitvclk-topmc-postlogoretry.fex`
+- Package SHA-256:
+  `540e7a150ce0a7c74feed86da3c3c5efd3262c6c628ab4efb3942e15791fac0f`
+- U-Boot item SHA-256:
+  `f5f812a752f8dfb1674bf39c09e6130024d75498ffbf2a01db3392cbe30f4eab`
+- Patch:
+  `configs/u-boot/0031-retry-unlocked-hdmi-after-logo-enable.patch`
+- Change: after `display_logo()` draws the BMP and calls `display_enable()`,
+  U-Boot now verifies HDMI-A lock. If the display state is still enabled but
+  the PHY/MC lock registers remain unset, it performs one
+  `display_disable()`/`display_init()`/`display_enable()` retry and records
+  `opi_logo_recover=post-retry-...`.
+- Expected reboot evidence: `/proc/cmdline` should gain
+  `opi_logo_recover=post-retry-...`. A successful visual fix should also move
+  `opi_logo_hdmi` away from `phy00,stat00,rst00,lock00` before Linux starts.
 
 2026-07-03 forced cyberdeck-mode plus HDMI clock-only DTB package:
 

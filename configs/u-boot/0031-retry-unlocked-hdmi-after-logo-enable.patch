@@ -1,0 +1,64 @@
+diff --git a/drivers/video/drm/sunxi_drm_drv.c b/drivers/video/drm/sunxi_drm_drv.c
+--- a/drivers/video/drm/sunxi_drm_drv.c
++++ b/drivers/video/drm/sunxi_drm_drv.c
+@@ -1026,6 +1026,46 @@ static void display_recover_stale_hdmi_before_logo(struct display_state *state)
+ 		DRM_ERROR("stale HDMI logo recovery init failed %d\n", init_ret);
+ }
+ 
++static int display_retry_unlocked_hdmi_after_logo(struct display_state *state)
++{
++	u8 pre_phy = 0;
++	u8 pre_lock = 0;
++	u8 post_phy = 0;
++	u8 post_lock = 0;
++	int disable_ret;
++	int init_ret;
++	int enable_ret;
++	char recover[96];
++
++	if (!display_is_stale_hdmi(state, &pre_phy, &pre_lock))
++		return 0;
++
++	printf("sunxi-drm: HDMI still unlocked after logo enable phy%02x lock%02x; retry\n",
++	       pre_phy, pre_lock);
++
++	disable_ret = display_disable(state);
++	init_ret = display_init(state);
++	if (init_ret) {
++		snprintf(recover, sizeof(recover),
++			 "post-retry-d%d-i%d-eX-p%02x-l%02x",
++			 disable_ret, init_ret, pre_phy, pre_lock);
++		env_set("opi_logo_recover", recover);
++		DRM_ERROR("post-logo HDMI retry init failed %d\n", init_ret);
++		return init_ret;
++	}
++
++	enable_ret = display_enable(state);
++	post_phy = (u8)dw_read(PHY_STAT0);
++	post_lock = (u8)dw_read(MC_LOCKONCLOCK);
++
++	snprintf(recover, sizeof(recover),
++		 "post-retry-d%d-i%d-e%d-p%02x-l%02x-pp%02x-ll%02x",
++		 disable_ret, init_ret, enable_ret, pre_phy, pre_lock,
++		 post_phy, post_lock);
++	env_set("opi_logo_recover", recover);
++
++	return enable_ret;
++}
++
+ static int display_get_timing_from_dts(struct sunxi_drm_panel *panel,
+ 				       struct drm_display_mode *mode,
+ 				       u32 *bus_flags)
+@@ -1334,6 +1374,13 @@ static int display_logo(struct display_state *state)
+ 		return ret;
+ 	}
+ 
++	ret = display_retry_unlocked_hdmi_after_logo(state);
++	if (ret) {
++		DRM_ERROR("post-logo HDMI retry fail!\n");
++		return ret;
++	}
++
+ 	return ret;
+ }
+ 
