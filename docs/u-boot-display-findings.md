@@ -73,6 +73,24 @@ framebuffer. The next test bypasses TCON pattern generation and uses
 `sunxi_drm fbtest`, which calls the vendor framebuffer/display-enable path and
 paints directly into the active DRM framebuffer.
 
+2026-07-03 follow-up:
+
+- The factory-SD-derived script-first vendor package also booted Linux through
+  `bootchooser=extlinux-legacy-nvme`, but it produced no pre-Linux factory
+  splash and no selector.
+- The embedded U-Boot DTB in the vendor SD, vendor NVMe, and current
+  script-first packages has root compatible strings `allwinner,a733` and
+  `arm,sun60iw2p1`; it is not the Linux board DTB with
+  `xunlong,orangepi-4-pro`.
+- In that embedded DTB, `/soc/hdmi0@5520000` sets `hdmi_power0` and
+  `hdmi_power1` as strings (`dcdc2-supply`, `dldo2-supply`), but the U-Boot
+  helper used by `sunxi_drm_hdmi.c` reads these properties as integer phandles
+  via `uclass_get_device_by_phandle()`.
+- `scripts/prepare-vendor-sd-hdmi-phandle-package.sh` creates a file-only
+  package candidate that preserves vendor U-Boot, preserves script-first
+  scanning, and rewrites only those two HDMI power properties to phandles
+  pointing at the existing `dcdc2-supply` and `dldo2-supply` regulator nodes.
+
 Installed framebuffer-test package:
 
 - Package SHA-256:
