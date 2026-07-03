@@ -216,6 +216,24 @@ Current HDMI-power candidate:
   `sunxi_show_logo` output for a long, visible bootloader window before
   extlinux continues.
 
+2026-07-03 A733 NVMe HDMI fast-output 1024x600 package:
+
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-nvme-scriptfirst-hdmi-power-fast1024.fex`
+- Package SHA-256:
+  `54790bdb8434451e9f37a05c9f6bf1eda4ce844bbb90f8ee9b99abb33dbde083`
+- U-Boot item SHA-256:
+  `69c6a93ff7c3ae65c7bf2003a246c269ac41cbbe1185af0f76e1211779a48192`
+- Source package:
+  `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex`
+- Build command:
+  `scripts/prepare-vendor-sd-hdmi-power-package.sh --fast-1024x600 --vendor /usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex --output /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-nvme-scriptfirst-hdmi-power-fast1024.fex`
+- This package keeps the A733 HDMI power, CLDO2, and `clk_tcon_tv` DTB fixes,
+  sets `uhdmi_fast_output=1`, and patches the first compiled HDMI default mode
+  table from `1920x1080` at 148.5 MHz to the Linux-proven `1024x600` timing at
+  49.0 MHz. The patched mode uses `1024 1029 1042 1312 600 602 605 622` with
+  negative hsync and positive vsync.
+
 Installed framebuffer-test package:
 
 - Package SHA-256:

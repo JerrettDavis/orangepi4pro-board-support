@@ -5,6 +5,7 @@ repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 vendor_package=${VENDOR_PACKAGE:-/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package.fex}
 output=${OUTPUT:-/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_vendor-sd-scriptfirst-hdmi-power.fex}
 work_dir=$(mktemp -d)
+fast_1024x600=false
 trap 'rm -rf "$work_dir"' EXIT
 
 usage() {
@@ -12,7 +13,7 @@ usage() {
 Prepare a vendor SD U-Boot package with script-first boot and corrected HDMI power.
 
 Usage:
-  scripts/prepare-vendor-sd-hdmi-power-package.sh [--vendor PACKAGE] [--output PACKAGE]
+  scripts/prepare-vendor-sd-hdmi-power-package.sh [--vendor PACKAGE] [--output PACKAGE] [--fast-1024x600]
 
 This is file-only. It:
   - extracts the vendor U-Boot item from an Allwinner TOC1 package;
@@ -25,6 +26,8 @@ This is file-only. It:
   - adds the clk_tcon_tv clock-name to the HDMI node when the packed U-Boot
     DTB omits it, so the HDMI driver can set the HDMI clock from the active
     TCON clock before enabling output;
+  - optionally sets uhdmi_fast_output=1 and replaces U-Boot's compiled HDMI
+    default 1920x1080 mode with the cyberdeck panel's 1024x600 timing;
   - rebuilds the package checksum.
 
 It does not write block devices, MTD, SPI, partitions, filesystems, or firmware.
@@ -40,6 +43,9 @@ while [ "$#" -gt 0 ]; do
     --output)
       output=${2:-}
       shift
+      ;;
+    --fast-1024x600)
+      fast_1024x600=true
       ;;
     -h|--help)
       usage
@@ -193,7 +199,11 @@ fdtput -t x "$work_dir/u-boot.dtb" "$hdmi_node" hdmi_power0 "$(printf '0x%x' "$d
 fdtput -t x "$work_dir/u-boot.dtb" "$hdmi_node" hdmi_power1 "$cldo2_phandle"
 fdtput -t x "$work_dir/u-boot.dtb" "$hdmi_node" uhdmi_power_count 0x2
 fdtput -t x "$work_dir/u-boot.dtb" "$hdmi_node" uhdmi_resistor_select 0x1
-fdtput -t x "$work_dir/u-boot.dtb" "$hdmi_node" uhdmi_fast_output 0x0
+if [ "$fast_1024x600" = true ]; then
+  fdtput -t x "$work_dir/u-boot.dtb" "$hdmi_node" uhdmi_fast_output 0x1
+else
+  fdtput -t x "$work_dir/u-boot.dtb" "$hdmi_node" uhdmi_fast_output 0x0
+fi
 
 if ! fdtget "$work_dir/u-boot.dtb" "$hdmi_node" clock-names | grep -qw 'clk_tcon_tv'; then
   tcon3_node=$soc_node/tcon3@5730000
@@ -269,6 +279,51 @@ else:
     dst.write_bytes(data[:dtb_offset] + dtb_data + b"\0" * (dtb_size - len(dtb_data)) + data[dtb_offset + dtb_size :])
 PY
 
+if [ "$fast_1024x600" = true ]; then
+  python3 - "$work_dir/u-boot-hdmi-power.bin" <<'PY'
+from pathlib import Path
+import struct
+import sys
+
+path = Path(sys.argv[1])
+data = bytearray(path.read_bytes())
+name_old = b"1920x1080"
+name_new = b"1024x600"
+field_old = struct.pack(
+    "<12I",
+    148500, 1920, 2008, 2052, 2200, 1080, 1084, 1089, 1125, 0, 0, 5
+)
+field_new = struct.pack(
+    "<12I",
+    49000, 1024, 1029, 1042, 1312, 600, 602, 605, 622, 0, 0, 6
+)
+
+field_offsets = []
+start = 0
+while True:
+    offset = data.find(field_old, start)
+    if offset < 0:
+        break
+    field_offsets.append(offset)
+    start = offset + 1
+
+if not field_offsets:
+    raise SystemExit("expected at least one HDMI 1920x1080 mode table")
+
+field_offset = field_offsets[0]
+name_offset = field_offset - 128
+if name_offset < 0 or data[name_offset:name_offset + len(name_old)] != name_old:
+    raise SystemExit("first HDMI 1920x1080 mode table does not have expected name field")
+if data[field_offset:field_offset + len(field_old)] != field_old:
+    raise SystemExit("HDMI default mode fields do not match expected 1920x1080 table")
+
+data[name_offset:name_offset + 128] = name_new + b"\0" * (128 - len(name_new))
+data[field_offset:field_offset + len(field_old)] = field_new
+path.write_bytes(data)
+print(f"patched_hdmi_default_mode_offset=0x{name_offset:x}")
+PY
+fi
+
 if ! grep -aFq 'boot.bmp decompressed OK' "$work_dir/u-boot-hdmi-power.bin" \
   && ! grep -aFq '/boot/boot1.bmp' "$work_dir/u-boot-hdmi-power.bin"; then
   printf 'ERROR: patched U-Boot does not preserve a known boot logo path\n' >&2
@@ -292,5 +347,6 @@ printf '  dcdc2_phandle=%s\n' "$dcdc2_phandle"
 printf '  cldo2_phandle=%s\n' "$cldo2_phandle"
 printf '  uhdmi_power_count=2\n'
 printf '  clk_tcon_tv=enabled\n'
+printf '  fast_1024x600=%s\n' "$fast_1024x600"
 printf '\nPrepared vendor SD HDMI-power package:\n'
 sha256sum "$output"
