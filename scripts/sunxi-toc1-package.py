@@ -255,6 +255,17 @@ def build_package(
     return struct.pack(f"<{len(words)}I", *words)
 
 
+def update_checksum(data: bytes) -> bytes:
+    if len(data) % 4 != 0:
+        raise ValueError("TOC1 package length must be 4-byte aligned")
+    words = list(struct.unpack(f"<{len(data) // 4}I", data))
+    if len(words) < 6:
+        raise ValueError("TOC1 package is too small")
+    words[5] = 0
+    words[5] = (sum(words) + STAMP_VALUE) & 0xFFFFFFFF
+    return struct.pack(f"<{len(words)}I", *words)
+
+
 def command_inspect(args: argparse.Namespace) -> int:
     for path in args.package:
         summary = package_summary(read_package(path))
@@ -276,6 +287,47 @@ def command_inspect(args: argparse.Namespace) -> int:
                     **item
                 )
             )
+    return 0
+
+
+def command_patch_scan_order(args: argparse.Namespace) -> int:
+    old = b"run scan_dev_for_extlinux; run scan_dev_for_scripts"
+    new = b"run scan_dev_for_scripts; run scan_dev_for_extlinux"
+    if len(old) != len(new):
+        raise RuntimeError("internal error: scan-order strings differ in length")
+
+    package = read_package(args.template)
+    data = bytearray(package.data)
+    old_count = data.count(old)
+    new_count = data.count(new)
+    if old_count != 1:
+        raise ValueError(f"expected exactly one stock scan-order string, found {old_count}")
+    if new_count != 0:
+        raise ValueError(f"script-first scan-order string already present {new_count} time(s)")
+
+    offset = data.index(old)
+    data[offset : offset + len(old)] = new
+    output = update_checksum(bytes(data))
+    rebuilt = parse_package(args.output, output)
+    stored, calculated = checksum_words(output)
+    if stored != calculated:
+        raise RuntimeError("internal error: patched checksum is invalid")
+    if output.count(old) != 0:
+        raise RuntimeError("internal error: stock scan-order string remains after patch")
+    if output.count(new) != 1:
+        raise RuntimeError("internal error: script-first scan-order string count is not one")
+
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_bytes(output)
+    print(f"wrote {args.output}")
+    print(f"patched_offset=0x{offset:x}")
+    print(f"length={len(output)} sha256={hashlib.sha256(output).hexdigest()}")
+    for item in package_summary(rebuilt)["items"]:
+        print(
+            "item {name}: offset=0x{offset:x} length=0x{length:x} sha256={sha256}".format(
+                **item
+            )
+        )
     return 0
 
 
@@ -378,6 +430,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     repack_parser.add_argument("--align", type=int, default=DEFAULT_ALIGN)
     repack_parser.set_defaults(func=command_repack)
+
+    patch_scan_parser = subparsers.add_parser(
+        "patch-scan-order",
+        help="patch stock distro scan order from extlinux-first to script-first",
+    )
+    patch_scan_parser.add_argument("--template", required=True, type=pathlib.Path)
+    patch_scan_parser.add_argument("--output", required=True, type=pathlib.Path)
+    patch_scan_parser.set_defaults(func=command_patch_scan_order)
 
     selftest_parser = subparsers.add_parser("selftest", help="run synthetic format tests")
     selftest_parser.set_defaults(func=command_selftest)

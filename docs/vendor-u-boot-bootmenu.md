@@ -103,6 +103,21 @@ The prep script is file-only. It validates that the U-Boot artifact contains
 `run scan_dev_for_scripts; run scan_dev_for_extlinux` and writes the candidate
 under `/var/cache/orangepi4pro-images/build/boot-package-candidates/`.
 
+Patch the exact installed Orange Pi vendor package to preserve its display
+payload and change only the compiled distro scan order:
+
+```bash
+scripts/sunxi-toc1-package.py patch-scan-order \
+  --template /usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex \
+  --output /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-nvme-stock-display-scriptfirst.fex
+```
+
+This command is file-only. It requires exactly one stock
+`run scan_dev_for_extlinux; run scan_dev_for_scripts` byte sequence, rewrites
+it to the same-length script-first sequence, recalculates the TOC1 checksum,
+and verifies that the patched package contains exactly one script-first scan
+sequence.
+
 Build the script-first menu variant with a replacement embedded boot logo:
 
 ```bash
@@ -278,6 +293,24 @@ backup_sha256=c061346c375f3d5847c49bc0df958514c9ed2355c7f167c856c099cbd2988fed
 
 This package has been inspected, installed to `/dev/mmcblk1`, and verified by
 reading the package slot back from SD.
+
+The 2026-07-03 A733 NVMe stock-display candidate is based on Orange Pi's
+installed `boot_package_a733_nvme.fex`. It preserves the stock
+`U-Boot 2018.07-orangepi-config-dirty (Nov 21 2025 - 10:05:52 +0000)` payload
+and changes only the compiled distro scan order:
+
+```text
+package=/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-nvme-stock-display-scriptfirst.fex
+package_sha256=d798104ccd705e542842fac409b1e2694c6ca19fcfac75fc30036a4535a7d318
+u_boot_item_sha256=77836181cc87b84559b11579eeb8388f216c51b8127951e2692a92101be6ace0
+template=/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex
+template_sha256=e626234a6eb9420ac29f515dd6acc543e7f0876e3dc086eec2fe221a50cc54f2
+patched_offset=0x92b8c
+```
+
+This candidate is intended to test whether the factory A733 NVMe display
+payload restores the pre-kernel Orange Pi bootloader splash while still letting
+the script-first `/boot/boot.scr` selector path run.
 
 The 2026-07-03 framebuffer-test diagnostic candidate adds `sunxi_drm fbtest`.
 It keeps the same script-first bootmenu, embedded selector logo, native
