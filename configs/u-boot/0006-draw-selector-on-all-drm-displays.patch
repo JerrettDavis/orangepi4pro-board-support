@@ -77,7 +77,7 @@ diff --git a/drivers/video/drm/sunxi_drm_drv.c b/drivers/video/drm/sunxi_drm_drv
 index a5f68ce7ce..653a65c535 100644
 --- a/drivers/video/drm/sunxi_drm_drv.c
 +++ b/drivers/video/drm/sunxi_drm_drv.c
-@@ -1459,6 +1459,47 @@ struct drm_framebuffer *drm_fb_lock(void)
+@@ -1459,6 +1459,54 @@ struct drm_framebuffer *drm_fb_lock(void)
  	return NULL;
  }
  
@@ -120,6 +120,13 @@ index a5f68ce7ce..653a65c535 100644
 +		ret = fn(fb, data);
 +		if (ret)
 +			return ret;
++
++		ret = display_set_plane(state);
++		if (ret) {
++			DRM_ERROR("display set plane fail after draw!\n");
++			return ret;
++		}
++
 +		count++;
 +	}
 +
