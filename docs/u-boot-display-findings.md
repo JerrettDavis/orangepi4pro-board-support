@@ -38,7 +38,7 @@ inside the vendor early-logo path or use a small U-Boot-side display patch that
 draws directly to the already initialized framebuffer. Do not call
 `sunxi_show_bmp` from `boot.scr`.
 
-Current candidate:
+Earlier candidate:
 
 - `scripts/generate-uboot-selector-logo.py` writes a deterministic replacement
   `drivers/video/drm/boot_bmp.h` before compiling U-Boot.
@@ -75,21 +75,58 @@ paints directly into the active DRM framebuffer.
 
 2026-07-03 follow-up:
 
-- The factory-SD-derived script-first vendor package also booted Linux through
+- The current installed SD TOC1 package is the stock vendor U-Boot with only
+  script-first scan order patched:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_vendor-sd-scriptfirst.fex`.
+  Readback from `/dev/mmcblk1` at `bs=8192 skip=2050` matches SHA-256
+  `77ef94aee8f8a6ec27d130822b70187fbf4316773d7ae5d59150e9027c654670`.
+- The SD `boot0_sdcard.fex` region at `bs=8192 skip=1` matches the vendor
+  package byte-for-byte. The missing pre-Linux display is not explained by a
+  corrupted boot0 or partial TOC1 write.
+- The factory-SD-derived script-first vendor package booted Linux through
   `bootchooser=extlinux-legacy-nvme`, but it produced no pre-Linux factory
   splash and no selector.
 - The embedded U-Boot DTB in the vendor SD, vendor NVMe, and current
   script-first packages has root compatible strings `allwinner,a733` and
   `arm,sun60iw2p1`; it is not the Linux board DTB with
   `xunlong,orangepi-4-pro`.
-- In that embedded DTB, `/soc/hdmi0@5520000` sets `hdmi_power0` and
-  `hdmi_power1` as strings (`dcdc2-supply`, `dldo2-supply`), but the U-Boot
-  helper used by `sunxi_drm_hdmi.c` reads these properties as integer phandles
-  via `uclass_get_device_by_phandle()`.
+- In the embedded U-Boot DTB, `/soc/hdmi0@5520000` sets `hdmi_power0` and
+  `hdmi_power1` as strings (`dcdc2-supply`, `dldo2-supply`). The U-Boot helper
+  used by `sunxi_drm_hdmi.c` reads these properties as integer phandles via
+  `uclass_get_device_by_phandle()`.
+- The same U-Boot HDMI driver reads `uhdmi_power_count` and
+  `uhdmi_resistor_select`, but the packed vendor DTB uses
+  `hdmi_power_cnt` and `hdmi_resistor_select`. As a result the driver can skip
+  HDMI regulator setup even when `hdmi_power0/1` are present.
+- The Linux DTB that brings the panel up uses `cldo2` for HDMI power1:
+  `dcdc2-supply`, `cldo2-supply`, `hdmi_power0 = "dcdc2"`,
+  `hdmi_power1 = "cldo2"`. The packed U-Boot DTB has no `cldo2` regulator node
+  and uses `dldo2` instead.
 - `scripts/prepare-vendor-sd-hdmi-phandle-package.sh` creates a file-only
   package candidate that preserves vendor U-Boot, preserves script-first
   scanning, and rewrites only those two HDMI power properties to phandles
   pointing at the existing `dcdc2-supply` and `dldo2-supply` regulator nodes.
+  That candidate is now superseded by the HDMI-power candidate below because it
+  made the wrong regulator reference internally consistent.
+
+Current HDMI-power candidate:
+
+- `scripts/prepare-vendor-sd-hdmi-power-package.sh` creates a file-only
+  package candidate from stock vendor U-Boot. It preserves the factory embedded
+  logo path and script-first scanning, adds the U-Boot-specific
+  `uhdmi_power_count`/`uhdmi_resistor_select` properties, creates a `cldo2`
+  regulator node matching the working Linux DTB, and points `hdmi_power0/1` at
+  regulator phandles.
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_vendor-sd-scriptfirst-hdmi-power.fex`
+- Package SHA-256:
+  `d4fe6a813c40766b9f00872b46ab3f1b72dfe70910bc1330b346605ffbf89bc7`
+- U-Boot item SHA-256:
+  `2d183202272a484cf21a79d684cdf5752a32afa061eece481ef9af38bce44731`
+- Expected test behavior: the existing `/boot/boot.scr` calls
+  `sunxi_show_logo` and holds for 15 seconds before extlinux. If the HDMI power
+  mismatch is the blocker, the bootloader window should show an obvious splash
+  or logo before the kernel dmesg/Plymouth phase.
 
 Installed framebuffer-test package:
 
