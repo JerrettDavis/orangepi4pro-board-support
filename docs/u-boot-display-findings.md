@@ -275,6 +275,10 @@ Current HDMI-power candidate:
   `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex`
 - Build command:
   `scripts/prepare-vendor-sd-hdmi-power-package.sh --hdmi-default-mode 1280x720 --force-route --vendor /usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex --output /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-nvme-scriptfirst-hdmi-power-fast720p-force-route.fex`
+- Recovery backup:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260703T063544Z.bin`
+- Recovery backup SHA-256:
+  `61e07915eda5d5d538f715199c9a6876a2e360a27f2ef0b66df76fc1c6c9cb8b`
 - Rationale: the previous `1024x600` package used a 49.00 MHz pixel clock.
   Vendor U-Boot's sun60i top PHY table does not contain 49 MHz and rounds to
   a nearby standard PLL entry. This package keeps the HDMI power, CLDO2,
