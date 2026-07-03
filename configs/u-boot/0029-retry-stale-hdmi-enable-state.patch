@@ -1,0 +1,47 @@
+diff --git a/drivers/video/drm/sunxi_drm_hdmi.c b/drivers/video/drm/sunxi_drm_hdmi.c
+--- a/drivers/video/drm/sunxi_drm_hdmi.c
++++ b/drivers/video/drm/sunxi_drm_hdmi.c
+@@ -422,6 +422,10 @@ static int _sunxi_drv_hdmi_enable(struct sunxi_drm_hdmi *hdmi)
+ {
++	struct dw_hdmi_dev_s *dw = NULL;
++	u8 phy_stat0 = 0;
++	u8 mc_lockon = 0;
++	int ret = 0;
+ 	if (IS_ERR_OR_NULL(hdmi)) {
+ 		shdmi_err(hdmi);
+ 		return -1;
+@@ -429,14 +433,35 @@ static int _sunxi_drv_hdmi_enable(struct sunxi_drm_hdmi *hdmi)
+ 
+ 	if (hdmi->hdmi_ctrl.drv_enable) {
++		dw = &hdmi->hdmi_core.dw_hdmi;
++		if (dw && dw->sw_init) {
++			phy_stat0 = (u8)dw_read(PHY_STAT0);
++			mc_lockon = (u8)dw_read(MC_LOCKONCLOCK);
++		}
++		if ((phy_stat0 & PHY_STAT0_TX_PHY_LOCK_MASK) &&
++		    (mc_lockon & MC_LOCKONCLOCK_TCLK_MASK) &&
++		    (mc_lockon & MC_LOCKONCLOCK_PCLK_MASK)) {
+ 		hdmi_inf("hdmi drv has been enable!\n");
+ 		return 0;
++		}
++
++		hdmi_wrn("hdmi drv stale enable state phy%02x lock%02x; reconfig\n",
++			 phy_stat0, mc_lockon);
++		sunxi_hdmi_disconfig();
++		hdmi->hdmi_ctrl.drv_enable = 0x0;
+ 	}
+ 
+ 	_sunxi_drv_hdmi_set_rate(hdmi);
+ 
+ 	/* hdmi driver video ops enable */
+-	sunxi_hdmi_config();
++	ret = sunxi_hdmi_config();
++	if (ret != 0) {
++		hdmi_err("hdmi drv config failed\n");
++		return ret;
++	}
+ 
+ 	hdmi->hdmi_ctrl.drv_enable = 0x1;
+ 	hdmi_inf("hdmi drv enable output done\n");
+ 	return 0;
+ }

@@ -980,6 +980,37 @@ delivering a valid visible signal until Linux later performs its full
 - Expected reboot evidence: retain `bootchooser=uboot-logo-preinit-ok`, keep
   `tv49000000`, gain `top20_` through `top40_` diagnostics, and check whether
   `stat`/`lock` move from `00` toward Linux's locked state.
+- Reboot result: Linux reached NVMe and U-Boot retained diagnostics. TOP PHY
+  now matched Linux's visible PLL words:
+  `top20_e8193000,top24_00000080,top28_00035000,top2c_00000000,top30_30000000,top40_00000001`.
+  The bootloader display still stayed black because the DW/SNPS core state
+  remained inactive: `phy00,stat00,rst00,lock00,vid00,gcp00`. Linux then made
+  the display visible after a disable/re-enable sequence and reported SNPS PHY
+  lock.
+
+2026-07-03 stale HDMI enable-state retry package:
+
+- Build command:
+  `scripts/build-vendor-uboot.sh --scriptfirst-diag-modeclock --clean`
+- Build artifact:
+  `.build/u-boot/artifacts/scriptfirst-diag-modeclock/u-boot-sun60iw2p1.bin`
+- Build artifact SHA-256:
+  `fe048ea27580f9248577f735380e40cbb31fd6893629285dbfa73b99581af1a5`
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-scriptfirst-diag-modeclock-force1024-hdmitvclk-topmc-staleretry.fex`
+- Package SHA-256:
+  `d0d129a5718e0d8fb65f5c573ab793f67285988bf529a6361a6b763413e10658`
+- U-Boot item SHA-256:
+  `fe048ea27580f9248577f735380e40cbb31fd6893629285dbfa73b99581af1a5`
+- Scope: same stock-DTB TOP/MC/TV-clock candidate, plus a normal-path retry
+  inside `_sunxi_drv_hdmi_enable()`. If U-Boot believes HDMI is enabled but
+  `PHY_STAT0` lacks TX lock or `MC_LOCKONCLOCK` lacks TMDS/pixel lock, it
+  clears the stale enable state with `sunxi_hdmi_disconfig()` and continues
+  through the existing normal `sunxi_hdmi_config()` path. The driver now marks
+  `drv_enable=1` only after `sunxi_hdmi_config()` succeeds.
+- Expected reboot evidence: if the stale early-return was the blocker,
+  `opi_logo_hdmi` should move away from `phy00,stat00,rst00,lock00` toward
+  SNPS PHY lock before Linux starts.
 - Reboot result: Linux reached the NVMe root, but both diagnostics regressed to
   `opi_logo_hdmi=diag-missing` and `opi_logo_drm=diag-missing`. The diagnostic
   command strings still exist in the installed package, so the broader embedded
