@@ -260,6 +260,28 @@ Current HDMI-power candidate:
   detect fails and `force-output` is absent. This test keeps the Linux-proven
   1024x600 fallback timing and forces the HDMI route to stay initialized even
   if early HPD is low.
+- Reboot result: Linux still reached `bootchooser=extlinux-legacy-nvme`, but
+  no bootloader output was visible before the Orange Pi OS loader/desktop.
+
+2026-07-03 A733 NVMe HDMI fast-output 720p force-route package:
+
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-nvme-scriptfirst-hdmi-power-fast720p-force-route.fex`
+- Package SHA-256:
+  `a2cb9fe115144f8f3509a06d8a5efd3953dc12e622fce6063f7f0b4560adb7ce`
+- U-Boot item SHA-256:
+  `2dc9b0e71b1fe1c8f0dc4147d6a8c14059a47cc4fd0f40fc90aec527474733da`
+- Source package:
+  `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex`
+- Build command:
+  `scripts/prepare-vendor-sd-hdmi-power-package.sh --hdmi-default-mode 1280x720 --force-route --vendor /usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex --output /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-nvme-scriptfirst-hdmi-power-fast720p-force-route.fex`
+- Rationale: the previous `1024x600` package used a 49.00 MHz pixel clock.
+  Vendor U-Boot's sun60i top PHY table does not contain 49 MHz and rounds to
+  a nearby standard PLL entry. This package keeps the HDMI power, CLDO2,
+  `clk_tcon_tv`, `uhdmi_fast_output=1`, and `force-output` changes, but uses
+  the standard `1280x720@60` mode at 74.25 MHz. That exact clock exists in the
+  U-Boot top PHY PLL table, and Linux reports `1280x720` as an available mode
+  on the live HDMI connector.
 
 Installed framebuffer-test package:
 

@@ -7,6 +7,7 @@ output=${OUTPUT:-/var/cache/orangepi4pro-images/build/boot-package-candidates/bo
 work_dir=$(mktemp -d)
 fast_1024x600=false
 force_route=false
+hdmi_default_mode=stock
 trap 'rm -rf "$work_dir"' EXIT
 
 usage() {
@@ -14,7 +15,7 @@ usage() {
 Prepare a vendor SD U-Boot package with script-first boot and corrected HDMI power.
 
 Usage:
-  scripts/prepare-vendor-sd-hdmi-power-package.sh [--vendor PACKAGE] [--output PACKAGE] [--fast-1024x600] [--force-route]
+  scripts/prepare-vendor-sd-hdmi-power-package.sh [--vendor PACKAGE] [--output PACKAGE] [--fast-1024x600] [--hdmi-default-mode MODE] [--force-route]
 
 This is file-only. It:
   - extracts the vendor U-Boot item from an Allwinner TOC1 package;
@@ -28,7 +29,7 @@ This is file-only. It:
     DTB omits it, so the HDMI driver can set the HDMI clock from the active
     TCON clock before enabling output;
   - optionally sets uhdmi_fast_output=1 and replaces U-Boot's compiled HDMI
-    default 1920x1080 mode with the cyberdeck panel's 1024x600 timing;
+    default 1920x1080 mode with an explicit fallback timing;
   - optionally marks the HDMI display route force-output so display_init does
     not deinitialize the route when early HPD detection is low;
   - rebuilds the package checksum.
@@ -49,6 +50,11 @@ while [ "$#" -gt 0 ]; do
       ;;
     --fast-1024x600)
       fast_1024x600=true
+      hdmi_default_mode=1024x600
+      ;;
+    --hdmi-default-mode)
+      hdmi_default_mode=${2:-}
+      shift
       ;;
     --force-route)
       force_route=true
@@ -65,6 +71,18 @@ while [ "$#" -gt 0 ]; do
   esac
   shift
 done
+
+case "$hdmi_default_mode" in
+  stock|1024x600|1280x720) ;;
+  *)
+    printf 'ERROR: --hdmi-default-mode must be stock, 1024x600, or 1280x720\n' >&2
+    exit 2
+    ;;
+esac
+
+if [ "$hdmi_default_mode" != stock ]; then
+  fast_1024x600=true
+fi
 
 if [ ! -r "$vendor_package" ]; then
   printf 'ERROR: vendor package not readable: %s\n' "$vendor_package" >&2
@@ -300,24 +318,34 @@ else:
     dst.write_bytes(data[:dtb_offset] + dtb_data + b"\0" * (dtb_size - len(dtb_data)) + data[dtb_offset + dtb_size :])
 PY
 
-if [ "$fast_1024x600" = true ]; then
-  python3 - "$work_dir/u-boot-hdmi-power.bin" <<'PY'
+if [ "$hdmi_default_mode" != stock ]; then
+  python3 - "$work_dir/u-boot-hdmi-power.bin" "$hdmi_default_mode" <<'PY'
 from pathlib import Path
 import struct
 import sys
 
 path = Path(sys.argv[1])
+mode = sys.argv[2]
 data = bytearray(path.read_bytes())
 name_old = b"1920x1080"
-name_new = b"1024x600"
 field_old = struct.pack(
     "<12I",
     148500, 1920, 2008, 2052, 2200, 1080, 1084, 1089, 1125, 0, 0, 5
 )
-field_new = struct.pack(
-    "<12I",
-    49000, 1024, 1029, 1042, 1312, 600, 602, 605, 622, 0, 0, 6
-)
+modes = {
+    "1024x600": (
+        b"1024x600",
+        struct.pack("<12I", 49000, 1024, 1029, 1042, 1312, 600, 602, 605, 622, 0, 0, 6),
+    ),
+    "1280x720": (
+        b"1280x720",
+        struct.pack("<12I", 74250, 1280, 1390, 1430, 1650, 720, 725, 730, 750, 0, 0, 5),
+    ),
+}
+try:
+    name_new, field_new = modes[mode]
+except KeyError as exc:
+    raise SystemExit(f"unsupported HDMI default mode: {mode}") from exc
 
 field_offsets = []
 start = 0
@@ -341,6 +369,7 @@ if data[field_offset:field_offset + len(field_old)] != field_old:
 data[name_offset:name_offset + 128] = name_new + b"\0" * (128 - len(name_new))
 data[field_offset:field_offset + len(field_old)] = field_new
 path.write_bytes(data)
+print(f"patched_hdmi_default_mode={mode}")
 print(f"patched_hdmi_default_mode_offset=0x{name_offset:x}")
 PY
 fi
@@ -368,7 +397,8 @@ printf '  dcdc2_phandle=%s\n' "$dcdc2_phandle"
 printf '  cldo2_phandle=%s\n' "$cldo2_phandle"
 printf '  uhdmi_power_count=2\n'
 printf '  clk_tcon_tv=enabled\n'
-printf '  fast_1024x600=%s\n' "$fast_1024x600"
+printf '  fast_output=%s\n' "$fast_1024x600"
+printf '  hdmi_default_mode=%s\n' "$hdmi_default_mode"
 printf '  force_route=%s\n' "$force_route"
 printf '\nPrepared vendor SD HDMI-power package:\n'
 sha256sum "$output"
