@@ -203,6 +203,10 @@ Current HDMI-power candidate:
   `f557839b048b86a7b3dbeb72bf8d9b2e9a1dc6065d86e12ca81b786c938d4ae0`
 - Source package:
   `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex`
+- Recovery backup:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260703T061415Z.bin`
+- Recovery backup SHA-256:
+  `02ee28b4badbf2a75c7b87279d4178591746e1bb72eeff184b7250e961b2648a`
 - This package applies the same HDMI power, CLDO2, and `clk_tcon_tv` DTB
   corrections to the larger Orange Pi A733 NVMe vendor package. It preserves
   the stock `U-Boot 2018.07-orangepi-config-dirty (Nov 21 2025 - 10:05:52
