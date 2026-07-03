@@ -1,0 +1,58 @@
+diff --git a/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_phy.c b/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_phy.c
+index 6d3c43e..f74d5d1 100644
+--- a/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_phy.c
++++ b/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_phy.c
+@@ -407,6 +407,19 @@ u8 dw_phy_wait_lock(void)
+ 	return DW_HDMI_DISABLE;
+ }
+ 
++u8 dw_phy_wait_rxsense(void)
++{
++	int i = 0;
++
++	for (i = 0; i < 20000; i++) {
++		udelay(5);
++		if (_dw_phy_get_rxsense() == 0xf)
++			return DW_HDMI_ENABLE;
++	}
++
++	hdmi_wrn("dw phy wait rxsense timeout: 0x%x\n", _dw_phy_get_rxsense());
++	return DW_HDMI_DISABLE;
++}
++
+ int dw_phy_write(u8 addr, u16 data)
+ {
+ 	switch (gPHY_interface) {
+diff --git a/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_phy.h b/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_phy.h
+index b1e9c2c..0622d61 100644
+--- a/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_phy.h
++++ b/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_phy.h
+@@ -44,6 +44,8 @@ int dw_phy_standby(void);
+  *          0 - mpll unlock
+  */
+ u8 dw_phy_wait_lock(void);
++
++u8 dw_phy_wait_rxsense(void);
+ /**
+  * @desc: dw phy write
+  * @addr: write address
+diff --git a/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/phy_snps.c b/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/phy_snps.c
+index 35b3527..b66fed7 100644
+--- a/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/phy_snps.c
++++ b/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/phy_snps.c
+@@ -760,10 +760,13 @@ int snps_phy_config(void)
+ 	}
+ 
+ 	dw_phy_set_power(DW_HDMI_ENABLE);
+ 
+ 	ret = dw_phy_wait_lock();
+ 	hdmi_inf("snps phy state: %s\n", ret == 1 ? "lock" : "unlock");
+-	if (ret == 1)
++	if (ret == 1) {
++		ret = dw_phy_wait_rxsense();
++		hdmi_inf("snps phy rxsense: %s\n", ret == 1 ? "ready" : "timeout");
+ 		return 0;
++	}
+ 
+ failed_exit:
+ 	return -1;

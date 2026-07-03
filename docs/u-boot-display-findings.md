@@ -644,6 +644,23 @@ blocker. The U-Boot DRM path believes it displayed a logo, but HDMI is not
 delivering a valid visible signal until Linux later performs its full
 1024x600 mode-change sequence.
 
+2026-07-03 HDMI RX-sense wait candidate:
+
+- Patch:
+  `configs/u-boot/0020-wait-for-snps-phy-rxsense.patch`
+- Rationale: the frame-composer test made U-Boot's HDMI core registers match
+  Linux for `PHY_CONF0`, `MC_PHYRSTZ`, and `FC_INVIDCONF`, but U-Boot still
+  reported `PHY_STAT0=0x03` while Linux-visible HDMI later reads
+  `PHY_STAT0=0xf3`. The missing upper nibble is the four RX-sense lane bits.
+  This patch waits up to 100 ms for RX-sense after SNPS PHY lock and records
+  whether the wait timed out.
+- Build artifact:
+  `.build/u-boot/artifacts/bootmenu/u-boot-sun60iw2p1.bin`
+- Build artifact SHA-256:
+  `7c9c6e781017a82dff400f5e31049cfdf69563d39b0b6d91aff2d5e31b5a4610`
+- Safety: the wait is bounded and non-fatal; it does not add or enable the
+  unsafe full DRM reinit command.
+
 2026-07-03 Linux frame-composer iteration candidate:
 
 - Patch:
