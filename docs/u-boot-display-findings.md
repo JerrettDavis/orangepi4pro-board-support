@@ -523,3 +523,22 @@ selector defaults while the factory display path is retested.
   seconds, enables `serial,vidconsole`, then enters prompted extlinux with
   NVMe as the default. Expected Linux marker after timeout/default selection is
   `bootchooser=extlinux-legacy-nvme`.
+
+2026-07-03 HDMI full-reinit pattern package:
+
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-fullreinit-pattern-1024x600.fex`
+- Package SHA-256:
+  `5c70ff4fd05d4983ccaba08e22efece301ce2bf745618b0b1b46721823502a45`
+- U-Boot item SHA-256:
+  `e852404440cf42e0f7e9bcdb72306d6d11d436a32ddf0377090b2ba69666cead`
+- Raw built U-Boot SHA-256:
+  `351f591ace04907adfca5f5f3997792a1a92c5a9ad7682cc1ef3a210fd0606c0`
+- Rationale: the prior low-level reinit returned `reconfig0`, but the
+  DesignWare HDMI registers stayed idle. This package changes the pattern
+  diagnostic to run the higher-level DRM HDMI sequence Linux uses after boot:
+  disable, mode-set, enable, then apply the HDMI20 internal pattern.
+- Expected comparison after reboot: `opi_pat_hdmipat=req1,reconfig0,...` should
+  still appear, but `opi_post_hdmi` should show nonzero HDMI core fields or a
+  visible red pattern. If it remains black/no-signal and the HDMI fields remain
+  zero, the remaining gap is earlier than U-Boot's connector enable path.

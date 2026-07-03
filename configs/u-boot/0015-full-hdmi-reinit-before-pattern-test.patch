@@ -1,0 +1,67 @@
+diff --git a/drivers/video/drm/sunxi_drm_hdmi.c b/drivers/video/drm/sunxi_drm_hdmi.c
+index 2c4ae02..6f0175a 100644
+--- a/drivers/video/drm/sunxi_drm_hdmi.c
++++ b/drivers/video/drm/sunxi_drm_hdmi.c
+@@ -619,6 +619,52 @@ static ssize_t _sunxi_hdmi_sysfs_reg_write_store(struct udevice *dev, u32 reg,
+ 	return 1;
+ }
+ 
++int _sunxi_drm_hdmi_disable(struct sunxi_drm_connector *conn,
++					  struct display_state *state);
++int _sunxi_drm_hdmi_mode_set(struct sunxi_drm_connector *conn,
++					  struct display_state *state);
++int _sunxi_drm_hdmi_enable(struct sunxi_drm_connector *conn,
++					  struct display_state *state);
++
++static int _sunxi_hdmi_reinit_active_display(void)
++{
++	struct display_state *state = NULL;
++	struct sunxi_drm_device *drm = sunxi_drm_device_get();
++	struct sunxi_drm_connector *connector = NULL;
++	int ret = 0;
++
++	if (!drm || list_empty(&drm->display_list))
++		return -1;
++
++	sunxi_drm_for_each_display(state, drm) {
++		connector = state->conn_state.connector;
++		if (connector && connector->type == DRM_MODE_CONNECTOR_HDMIA)
++			break;
++	}
++
++	if (!state || !connector || connector->type != DRM_MODE_CONNECTOR_HDMIA)
++		return -2;
++
++	/*
++	 * Linux only gets a visible HDMI signal after it performs the full DRM
++	 * disable/mode-set/enable sequence.  The lower-level HDMI enable path can
++	 * return success while leaving the DesignWare HDMI core idle, so make the
++	 * pre-OS visual diagnostic exercise the same higher-level path.
++	 */
++	ret = _sunxi_drm_hdmi_disable(connector, state);
++	if (ret)
++		return 0x10 | (ret & 0xf);
++
++	ret = _sunxi_drm_hdmi_mode_set(connector, state);
++	if (ret)
++		return 0x20 | (ret & 0xf);
++
++	ret = _sunxi_drm_hdmi_enable(connector, state);
++	if (ret)
++		return 0x30 | (ret & 0xf);
++
++	return 0;
++}
++
+ ssize_t _sunxi_hdmi_sysfs_pattern_store(struct udevice *dev, int bit)
+ {
+ 	struct sunxi_drm_hdmi *hdmi = dev_get_priv(dev);
+@@ -633,7 +679,7 @@ ssize_t _sunxi_hdmi_sysfs_pattern_store(struct udevice *dev, int bit)
+ 		 * this diagnostic tests a fully configured transmitter.
+ 		 */
+ 		hdmi->hdmi_ctrl.drv_enable = 0x0;
+-		ret = _sunxi_drv_hdmi_enable(hdmi);
++		ret = _sunxi_hdmi_reinit_active_display();
+ 		env_set_ulong("opi_hdmi_pattern_reconfig", ret);
+ 	}
+ 

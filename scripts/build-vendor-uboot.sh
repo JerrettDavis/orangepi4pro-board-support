@@ -25,6 +25,7 @@ hdmi_bus_clock_patch=${HDMI_BUS_CLOCK_PATCH:-"$repo_root/configs/u-boot/0011-ena
 hdmi_pattern_status_patch=${HDMI_PATTERN_STATUS_PATCH:-"$repo_root/configs/u-boot/0012-fix-hdmi-pattern-status-diag.patch"}
 hdmi_top_phy_pddq_patch=${HDMI_TOP_PHY_PDDQ_PATCH:-"$repo_root/configs/u-boot/0013-clear-top-phy-pddq-on-power-on.patch"}
 hdmi_pattern_reconfig_patch=${HDMI_PATTERN_RECONFIG_PATCH:-"$repo_root/configs/u-boot/0014-reconfigure-hdmi-before-pattern-test.patch"}
+hdmi_pattern_full_reinit_patch=${HDMI_PATTERN_FULL_REINIT_PATCH:-"$repo_root/configs/u-boot/0015-full-hdmi-reinit-before-pattern-test.patch"}
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
 cross_compile=${CROSS_COMPILE:-arm-linux-gnueabi-}
 jobs=${JOBS:-$(nproc)}
@@ -224,6 +225,17 @@ if [ "$mode" = bootmenu ]; then
     "$work_dir/drivers/video/drm/sunxi_drm_hdmi.c" \
     || {
       printf 'ERROR: HDMI pattern reconfig patch did not apply cleanly\n' >&2
+      exit 1
+    }
+  if [ ! -r "$hdmi_pattern_full_reinit_patch" ]; then
+    printf 'ERROR: HDMI pattern full-reinit patch not readable: %s\n' "$hdmi_pattern_full_reinit_patch" >&2
+    exit 1
+  fi
+  git -C "$work_dir" apply --recount "$hdmi_pattern_full_reinit_patch"
+  grep -q '_sunxi_hdmi_reinit_active_display' \
+    "$work_dir/drivers/video/drm/sunxi_drm_hdmi.c" \
+    || {
+      printf 'ERROR: HDMI pattern full-reinit patch did not apply cleanly\n' >&2
       exit 1
     }
   if [ ! -r "$fragment" ]; then
