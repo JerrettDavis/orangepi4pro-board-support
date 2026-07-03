@@ -375,3 +375,32 @@ Installed framebuffer-test package:
   `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260703T011715Z.bin`.
 - Recovery backup SHA-256:
   `d44158d530b844a15b7420fa22404ae7a4c1ce8005b42b4c260510dbe4e84f3f`.
+
+2026-07-03 stock BootGUI reset point:
+
+- SPI NOR is present as `/dev/mtd0` (`XM25QU128C`, 16 MiB), but the current
+  readback has no TOC magic hits and repeats the same 64 KiB content hash
+  through the first MiB. Do not write SPI for the HDMI-selector problem unless
+  a later capture proves the board is actually booting a valid SPI image.
+- The SD boot0 region byte-matches the vendor `boot0_sdcard.fex`, so the
+  missing factory splash is not caused by a corrupted SD boot0.
+- The source path for the factory "initializing boot loader" display differs
+  from the custom selector path that has been tested so far. Stock U-Boot keeps
+  factory `boot.bmp`/`bootlogo` loader strings and uses the early display path
+  around `sunxi_early_logo_display()` and `gd->boot_logo_addr`. The custom
+  selector U-Boot packages prove that AW_DRM diagnostics can report success
+  while the HDMI sink still sees no pre-OS signal.
+- Next reset point package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_vendor-sd-scriptfirst.fex`
+- Expected package SHA-256:
+  `77ef94aee8f8a6ec27d130822b70187fbf4316773d7ae5d59150e9027c654670`
+- Validate it before install with:
+
+```bash
+scripts/validate-stock-bootgui-package.sh \
+  --package /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_vendor-sd-scriptfirst.fex
+```
+
+This package preserves the stock vendor U-Boot item and only changes distro
+scan order from extlinux-first to script-first, so `boot.scr` can still stage
+selector defaults while the factory display path is retested.
