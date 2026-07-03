@@ -153,7 +153,7 @@ if [ "$mode" = bootmenu ]; then
     printf 'ERROR: boot GUI selector patch not readable: %s\n' "$bootgui_selector_patch" >&2
     exit 1
   fi
-  git -C "$work_dir" apply "$bootgui_selector_patch"
+  git -C "$work_dir" apply --recount "$bootgui_selector_patch"
   if [ ! -r "$bootgui_selector_all_displays_patch" ]; then
     printf 'ERROR: boot GUI all-displays patch not readable: %s\n' "$bootgui_selector_all_displays_patch" >&2
     exit 1

@@ -23,6 +23,8 @@ index 4aa2b4f9ee..e2a30bc6c5 100644
 +	memset(&draw, 0, sizeof(draw));
 +	draw.drm_fb = fb;
 +	draw.fb = map_sysmem(fb->dma_addr, fb->buf_size);
++	draw.flush_addr = fb->dma_addr;
++	draw.flush_size = fb->buf_size;
 +	draw.width = fb->width;
 +	draw.height = fb->height;
 +	draw.line_length = fb->pitches[0];
@@ -36,11 +38,19 @@ index 4aa2b4f9ee..e2a30bc6c5 100644
 +static void opi_draw_all(struct opi_draw *fallback, int selected, int remaining)
 +{
 +	struct opi_draw_all_ctx ctx = { selected, remaining, 0 };
++	char diag[96];
 +
-+	if (drm_fb_for_each_enabled(opi_draw_one_drm_fb, &ctx) >= 0 && ctx.rendered)
++	if (drm_fb_for_each_enabled(opi_draw_one_drm_fb, &ctx) >= 0 && ctx.rendered) {
++		snprintf(diag, sizeof(diag), "opibootselect=drm_r%d_%dx%d",
++			 ctx.rendered, fallback->width, fallback->height);
++		env_set("opi_bootselect_diag", diag);
 +		return;
++	}
 +
 +	opi_draw_selector(fallback, selected, remaining);
++	snprintf(diag, sizeof(diag), "opibootselect=fallback_%dx%d",
++		 fallback->width, fallback->height);
++	env_set("opi_bootselect_diag", diag);
 +}
 +
  static int opi_read_key(void)
