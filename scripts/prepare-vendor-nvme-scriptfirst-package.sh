@@ -9,15 +9,16 @@ trap 'rm -rf "$work_dir"' EXIT
 
 usage() {
   cat <<'USAGE'
-Prepare a script-first package from Orange Pi's packaged A733 NVMe U-Boot.
+Prepare a script-first package from Orange Pi's packaged A733 U-Boot.
 
 Usage:
   scripts/prepare-vendor-nvme-scriptfirst-package.sh [--vendor PACKAGE] [--output PACKAGE]
 
 This is file-only. It patches the packaged vendor U-Boot binary in a
 length-preserving way so scan_dev_for_boot runs boot.scr before extlinux, then
-rebuilds the Allwinner TOC1 package checksum. It does not write block devices,
-MTD, SPI, partitions, filesystems, or firmware.
+rebuilds the Allwinner TOC1 package checksum. It accepts both the vendor NVMe
+package and the vendor SD package. It does not write block devices, MTD, SPI,
+partitions, filesystems, or firmware.
 USAGE
 }
 
@@ -94,11 +95,15 @@ if len(old) != len(new):
 dst.write_bytes(data.replace(old, new, 1))
 PY
 
-grep -aFq 'bootcmd_nvme=' "$work_dir/u-boot-scriptfirst.bin" \
-  || {
-    printf 'ERROR: patched U-Boot does not contain vendor NVMe boot command\n' >&2
-    exit 1
-  }
+if grep -aFq 'bootcmd_nvme=' "$work_dir/u-boot-vendor.bin"; then
+  grep -aFq 'bootcmd_nvme=' "$work_dir/u-boot-scriptfirst.bin" \
+    || {
+      printf 'ERROR: patched U-Boot lost vendor NVMe boot command\n' >&2
+      exit 1
+    }
+else
+  printf 'NOTE: vendor package has no bootcmd_nvme; SD boot script must load kernel assets.\n'
+fi
 grep -aFq 'boot.bmp decompressed OK' "$work_dir/u-boot-scriptfirst.bin" \
   || {
     printf 'ERROR: patched U-Boot does not preserve factory embedded-logo path\n' >&2
