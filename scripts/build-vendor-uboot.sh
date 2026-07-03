@@ -18,6 +18,7 @@ display_fbtest_patch=${DISPLAY_FBTEST_PATCH:-"$repo_root/configs/u-boot/0004-add
 bootgui_selector_patch=${BOOTGUI_SELECTOR_PATCH:-"$repo_root/configs/u-boot/0005-add-dm-video-selector-command.patch"}
 bootgui_selector_all_displays_patch=${BOOTGUI_SELECTOR_ALL_DISPLAYS_PATCH:-"$repo_root/configs/u-boot/0006-draw-selector-on-all-drm-displays.patch"}
 a733_logo_loader_patch=${A733_LOGO_LOADER_PATCH:-"$repo_root/configs/u-boot/0007-use-a733-file-backed-boot-logo.patch"}
+high_contrast_selector_patch=${HIGH_CONTRAST_SELECTOR_PATCH:-"$repo_root/configs/u-boot/0008-use-high-contrast-selector-test-screen.patch"}
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
 cross_compile=${CROSS_COMPILE:-arm-linux-gnueabi-}
 jobs=${JOBS:-$(nproc)}
@@ -165,6 +166,11 @@ if [ "$mode" = bootmenu ]; then
     exit 1
   fi
   git -C "$work_dir" apply --recount "$a733_logo_loader_patch"
+  if [ ! -r "$high_contrast_selector_patch" ]; then
+    printf 'ERROR: high-contrast selector patch not readable: %s\n' "$high_contrast_selector_patch" >&2
+    exit 1
+  fi
+  git -C "$work_dir" apply --recount "$high_contrast_selector_patch"
   if [ ! -r "$fragment" ]; then
     printf 'ERROR: config fragment not readable: %s\n' "$fragment" >&2
     exit 1

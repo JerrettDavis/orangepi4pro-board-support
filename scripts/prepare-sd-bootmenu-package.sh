@@ -87,6 +87,11 @@ grep -aFq '/boot/boot1.bmp' "$uboot" \
     printf 'ERROR: U-Boot artifact does not contain A733 file-backed boot1.bmp loader\n' >&2
     exit 1
   }
+grep -aFq 'BOOTLOADER TEST SCREEN' "$uboot" \
+  || {
+    printf 'ERROR: U-Boot artifact does not contain high-contrast selector test screen\n' >&2
+    exit 1
+  }
 
 mkdir -p "$(dirname "$output")"
 "$repo_root/scripts/sunxi-toc1-package.py" repack \
@@ -118,6 +123,11 @@ fi
 grep -aFq '/boot/boot1.bmp' "$output" \
   || {
     printf 'ERROR: output package does not contain A733 file-backed boot1.bmp loader\n' >&2
+    exit 1
+  }
+grep -aFq 'BOOTLOADER TEST SCREEN' "$output" \
+  || {
+    printf 'ERROR: output package does not contain high-contrast selector test screen\n' >&2
     exit 1
   }
 

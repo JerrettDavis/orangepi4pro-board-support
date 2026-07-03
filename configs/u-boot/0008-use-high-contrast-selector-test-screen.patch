@@ -1,0 +1,45 @@
+diff --git a/cmd/opi_bootselect.c b/cmd/opi_bootselect.c
+index 0f6f4be1..6e1dd4ef 100644
+--- a/cmd/opi_bootselect.c
++++ b/cmd/opi_bootselect.c
+@@ -216,14 +216,14 @@ static void opi_draw_selector(struct opi_draw *draw, int selected,
+ 			      int remaining)
+ {
+-	u32 bg = opi_pixel(draw, 13, 16, 20);
+-	u32 panel = opi_pixel(draw, 34, 39, 47);
+-	u32 panel2 = opi_pixel(draw, 27, 31, 38);
+-	u32 fg = opi_pixel(draw, 245, 248, 252);
+-	u32 muted = opi_pixel(draw, 174, 184, 198);
+-	u32 green = opi_pixel(draw, 24, 128, 81);
+-	u32 blue = opi_pixel(draw, 42, 101, 176);
+-	u32 yellow = opi_pixel(draw, 255, 209, 102);
++	u32 bg = opi_pixel(draw, 255, 255, 255);
++	u32 panel = opi_pixel(draw, 235, 240, 247);
++	u32 panel2 = opi_pixel(draw, 226, 232, 240);
++	u32 fg = opi_pixel(draw, 0, 0, 0);
++	u32 muted = opi_pixel(draw, 39, 50, 64);
++	u32 green = opi_pixel(draw, 0, 170, 85);
++	u32 blue = opi_pixel(draw, 30, 96, 200);
++	u32 yellow = opi_pixel(draw, 190, 40, 40);
+ 	u32 black = opi_pixel(draw, 0, 0, 0);
++	u32 red = opi_pixel(draw, 220, 0, 0);
+ 	int w = draw->width;
+ 	int h = draw->height;
+ 	int scale = (w >= 900 && h >= 500) ? 2 : 1;
+@@ -239,10 +239,12 @@ static void opi_draw_selector(struct opi_draw *draw, int selected,
+ 	char line[64];
+ 
+ 	opi_fill_rect(draw, 0, 0, w, h, bg);
+-	opi_fill_rect(draw, 0, 0, w, 12, selected ? blue : green);
+-	opi_center_text(draw, top, "Orange Pi 4 Pro Boot Selector",
+-			fg, bg, title_scale);
+-	opi_center_text(draw, top + 34,
++	opi_fill_rect(draw, 0, 0, w, 36, red);
++	opi_center_text(draw, 8, "BOOTLOADER TEST SCREEN",
++			bg, red, title_scale);
++	opi_center_text(draw, top, "Orange Pi 4 Pro Boot Selector",
++			fg, bg, title_scale);
++	opi_center_text(draw, top + 36,
+ 			"Pre-Linux U-Boot selector: choose a root device",
+ 			muted, bg, 1);
+ 
