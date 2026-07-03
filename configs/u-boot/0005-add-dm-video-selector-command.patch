@@ -15,11 +15,13 @@ new file mode 100644
 index 0000000000..4aa2b4f9ee
 --- /dev/null
 +++ b/cmd/opi_bootselect.c
-@@ -0,0 +1,344 @@
+@@ -0,0 +1,388 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +#include <common.h>
 +#include <command.h>
 +#include <dm.h>
++#include <drm/drm_framebuffer.h>
++#include <mapmem.h>
 +#include <video.h>
 +#include <video_font.h>
 +
@@ -32,6 +34,12 @@ index 0000000000..4aa2b4f9ee
 +struct opi_draw {
 +	struct udevice *dev;
 +	struct video_priv *priv;
++	struct drm_framebuffer *drm_fb;
++	void *fb;
++	int width;
++	int height;
++	int line_length;
++	enum video_log2_bpp bpix;
 +};
 +
 +static u32 opi_rgb565(u8 r, u8 g, u8 b)
@@ -39,9 +47,9 @@ index 0000000000..4aa2b4f9ee
 +	return ((r & 0xf8) << 8) | ((g & 0xfc) << 3) | (b >> 3);
 +}
 +
-+static u32 opi_pixel(struct video_priv *priv, u8 r, u8 g, u8 b)
++static u32 opi_pixel(struct opi_draw *draw, u8 r, u8 g, u8 b)
 +{
-+	switch (priv->bpix) {
++	switch (draw->bpix) {
 +	case VIDEO_BPP16:
 +		return opi_rgb565(r, g, b);
 +	case VIDEO_BPP32:
@@ -51,15 +59,15 @@ index 0000000000..4aa2b4f9ee
 +	}
 +}
 +
-+static void opi_put_pixel(struct video_priv *priv, int x, int y, u32 color)
++static void opi_put_pixel(struct opi_draw *draw, int x, int y, u32 color)
 +{
 +	uchar *line;
 +
-+	if (x < 0 || y < 0 || x >= priv->xsize || y >= priv->ysize)
++	if (x < 0 || y < 0 || x >= draw->width || y >= draw->height)
 +		return;
 +
-+	line = priv->fb + y * priv->line_length;
-+	switch (priv->bpix) {
++	line = draw->fb + y * draw->line_length;
++	switch (draw->bpix) {
 +	case VIDEO_BPP16:
 +		((u16 *)line)[x] = color;
 +		break;
@@ -72,7 +80,7 @@ index 0000000000..4aa2b4f9ee
 +	}
 +}
 +
-+static void opi_fill_rect(struct video_priv *priv, int x, int y, int w, int h,
++static void opi_fill_rect(struct opi_draw *draw, int x, int y, int w, int h,
 +			  u32 color)
 +{
 +	int xx, yy;
@@ -85,17 +93,17 @@ index 0000000000..4aa2b4f9ee
 +		h += y;
 +		y = 0;
 +	}
-+	if (x + w > priv->xsize)
-+		w = priv->xsize - x;
-+	if (y + h > priv->ysize)
-+		h = priv->ysize - y;
++	if (x + w > draw->width)
++		w = draw->width - x;
++	if (y + h > draw->height)
++		h = draw->height - y;
 +	if (w <= 0 || h <= 0)
 +		return;
 +
 +	for (yy = y; yy < y + h; yy++) {
-+		uchar *line = priv->fb + yy * priv->line_length;
++		uchar *line = draw->fb + yy * draw->line_length;
 +
-+		switch (priv->bpix) {
++		switch (draw->bpix) {
 +		case VIDEO_BPP16: {
 +			u16 *dst = (u16 *)line + x;
 +
@@ -117,7 +125,7 @@ index 0000000000..4aa2b4f9ee
 +	}
 +}
 +
-+static void opi_draw_char(struct video_priv *priv, int x, int y, char ch,
++static void opi_draw_char(struct opi_draw *draw, int x, int y, char ch,
 +			  u32 fg, u32 bg, int scale)
 +{
 +	int row, col, sy, sx;
@@ -133,7 +141,7 @@ index 0000000000..4aa2b4f9ee
 +
 +			for (sy = 0; sy < scale; sy++) {
 +				for (sx = 0; sx < scale; sx++) {
-+					opi_put_pixel(priv, x + col * scale + sx,
++					opi_put_pixel(draw, x + col * scale + sx,
 +						      y + row * scale + sy,
 +						      color);
 +				}
@@ -143,30 +151,50 @@ index 0000000000..4aa2b4f9ee
 +	}
 +}
 +
-+static void opi_draw_text(struct video_priv *priv, int x, int y,
++static void opi_draw_text(struct opi_draw *draw, int x, int y,
 +			  const char *text, u32 fg, u32 bg, int scale)
 +{
 +	while (*text) {
-+		opi_draw_char(priv, x, y, *text, fg, bg, scale);
++		opi_draw_char(draw, x, y, *text, fg, bg, scale);
 +		x += VIDEO_FONT_WIDTH * scale;
 +		text++;
 +	}
 +}
 +
-+static void opi_center_text(struct video_priv *priv, int y, const char *text,
++static void opi_center_text(struct opi_draw *draw, int y, const char *text,
 +			    u32 fg, u32 bg, int scale)
 +{
 +	int width = strlen(text) * VIDEO_FONT_WIDTH * scale;
-+	int x = (priv->xsize - width) / 2;
++	int x = (draw->width - width) / 2;
 +
 +	if (x < 0)
 +		x = 0;
-+	opi_draw_text(priv, x, y, text, fg, bg, scale);
++	opi_draw_text(draw, x, y, text, fg, bg, scale);
++}
++
++static enum video_log2_bpp opi_bpix_from_depth(unsigned int depth)
++{
++	if (depth <= 16)
++		return VIDEO_BPP16;
++	return VIDEO_BPP32;
 +}
 +
 +static int opi_video_open(struct opi_draw *draw)
 +{
 +	int ret;
++
++	memset(draw, 0, sizeof(*draw));
++
++	draw->drm_fb = drm_fb_lock();
++	if (draw->drm_fb && draw->drm_fb->dma_addr && draw->drm_fb->width &&
++	    draw->drm_fb->height && draw->drm_fb->pitches[0]) {
++		draw->fb = map_sysmem(draw->drm_fb->dma_addr, draw->drm_fb->buf_size);
++		draw->width = draw->drm_fb->width;
++		draw->height = draw->drm_fb->height;
++		draw->line_length = draw->drm_fb->pitches[0];
++		draw->bpix = opi_bpix_from_depth(draw->drm_fb->format->depth);
++		return 0;
++	}
 +
 +	ret = uclass_first_device_err(UCLASS_VIDEO, &draw->dev);
 +	if (ret) {
@@ -181,24 +209,40 @@ index 0000000000..4aa2b4f9ee
 +		return -ENODEV;
 +	}
 +
++	draw->fb = draw->priv->fb;
++	draw->width = draw->priv->xsize;
++	draw->height = draw->priv->ysize;
++	draw->line_length = draw->priv->line_length;
++	draw->bpix = draw->priv->bpix;
 +	return 0;
++}
++
++static void opi_video_flush(struct opi_draw *draw)
++{
++	if (draw->drm_fb) {
++		flush_dcache_range((ulong)draw->fb,
++				   ALIGN((ulong)draw->fb + draw->drm_fb->buf_size,
++					 CONFIG_SYS_CACHELINE_SIZE));
++		return;
++	}
++	if (draw->dev)
++		video_sync(draw->dev);
 +}
 +
 +static void opi_draw_selector(struct opi_draw *draw, int selected,
 +			      int remaining)
 +{
-+	struct video_priv *priv = draw->priv;
-+	u32 bg = opi_pixel(priv, 13, 16, 20);
-+	u32 panel = opi_pixel(priv, 34, 39, 47);
-+	u32 panel2 = opi_pixel(priv, 27, 31, 38);
-+	u32 fg = opi_pixel(priv, 245, 248, 252);
-+	u32 muted = opi_pixel(priv, 174, 184, 198);
-+	u32 green = opi_pixel(priv, 24, 128, 81);
-+	u32 blue = opi_pixel(priv, 42, 101, 176);
-+	u32 yellow = opi_pixel(priv, 255, 209, 102);
-+	u32 black = opi_pixel(priv, 0, 0, 0);
-+	int w = priv->xsize;
-+	int h = priv->ysize;
++	u32 bg = opi_pixel(draw, 13, 16, 20);
++	u32 panel = opi_pixel(draw, 34, 39, 47);
++	u32 panel2 = opi_pixel(draw, 27, 31, 38);
++	u32 fg = opi_pixel(draw, 245, 248, 252);
++	u32 muted = opi_pixel(draw, 174, 184, 198);
++	u32 green = opi_pixel(draw, 24, 128, 81);
++	u32 blue = opi_pixel(draw, 42, 101, 176);
++	u32 yellow = opi_pixel(draw, 255, 209, 102);
++	u32 black = opi_pixel(draw, 0, 0, 0);
++	int w = draw->width;
++	int h = draw->height;
 +	int scale = (w >= 900 && h >= 500) ? 2 : 1;
 +	int title_scale = scale;
 +	int top = h / 7;
@@ -209,41 +253,41 @@ index 0000000000..4aa2b4f9ee
 +	int y2 = y1 + row_h + 18;
 +	char line[64];
 +
-+	opi_fill_rect(priv, 0, 0, w, h, bg);
-+	opi_fill_rect(priv, 0, 0, w, 12, selected ? blue : green);
-+	opi_center_text(priv, top, "Orange Pi 4 Pro Boot Selector",
++	opi_fill_rect(draw, 0, 0, w, h, bg);
++	opi_fill_rect(draw, 0, 0, w, 12, selected ? blue : green);
++	opi_center_text(draw, top, "Orange Pi 4 Pro Boot Selector",
 +			fg, bg, title_scale);
-+	opi_center_text(priv, top + 34,
++	opi_center_text(draw, top + 34,
 +			"Pre-Linux U-Boot selector: choose a root device",
 +			muted, bg, 1);
 +
-+	opi_fill_rect(priv, box_x, y1, box_w, row_h,
++	opi_fill_rect(draw, box_x, y1, box_w, row_h,
 +		      selected == 0 ? green : panel);
-+	opi_draw_text(priv, box_x + 24, y1 + row_h / 2 - 8,
++	opi_draw_text(draw, box_x + 24, y1 + row_h / 2 - 8,
 +		      "1 / N / Enter   Ubuntu NVMe", fg,
 +		      selected == 0 ? green : panel, 1);
 +
-+	opi_fill_rect(priv, box_x, y2, box_w, row_h,
++	opi_fill_rect(draw, box_x, y2, box_w, row_h,
 +		      selected == 1 ? blue : panel2);
-+	opi_draw_text(priv, box_x + 24, y2 + row_h / 2 - 8,
++	opi_draw_text(draw, box_x + 24, y2 + row_h / 2 - 8,
 +		      "2 / S           Ubuntu SD", fg,
 +		      selected == 1 ? blue : panel2, 1);
 +
-+	opi_center_text(priv, y2 + row_h + 28,
++	opi_center_text(draw, y2 + row_h + 28,
 +			"Use N/S/1/2, arrow keys, Tab, Space, or Enter",
 +			muted, bg, 1);
 +	if (remaining >= 0) {
 +		snprintf(line, sizeof(line), "Defaulting to NVMe in %d seconds",
 +			 remaining);
-+		opi_center_text(priv, y2 + row_h + 54, line, yellow, bg, 1);
++		opi_center_text(draw, y2 + row_h + 54, line, yellow, bg, 1);
 +	} else {
-+		opi_center_text(priv, y2 + row_h + 54,
++		opi_center_text(draw, y2 + row_h + 54,
 +				selected ? "Booting SD" : "Booting NVMe",
 +				yellow, bg, 1);
 +	}
 +
-+	opi_fill_rect(priv, 0, h - 2, w, 2, black);
-+	video_sync(draw->dev);
++	opi_fill_rect(draw, 0, h - 2, w, 2, black);
++	opi_video_flush(draw);
 +}
 +
 +static int opi_read_key(void)
