@@ -238,6 +238,25 @@ Current HDMI-power candidate:
   49.0 MHz. The patched mode uses `1024 1029 1042 1312 600 602 605 622` with
   negative hsync and positive vsync.
 
+2026-07-03 A733 NVMe HDMI fast-output 1024x600 force-route package:
+
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-nvme-scriptfirst-hdmi-power-fast1024-force-route.fex`
+- Package SHA-256:
+  `0bdbae3771f0fe8be50af30af05d8f29a9b39fb0b94db10fd7edd6de99a7d46c`
+- U-Boot item SHA-256:
+  `a7da32e4ec45c1a934499448a86a8fca1017a98880056f174d2d175045e4997c`
+- Source package:
+  `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex`
+- Build command:
+  `scripts/prepare-vendor-sd-hdmi-power-package.sh --fast-1024x600 --force-route --vendor /usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex --output /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-nvme-scriptfirst-hdmi-power-fast1024-force-route.fex`
+- This package adds only one behavior beyond the previous fast-output package:
+  `/soc/sunxi-drm/route/disp0_hdmi0` now has a boolean `force-output`
+  property. In vendor U-Boot, `display_init()` deinitializes a route when
+  detect fails and `force-output` is absent. This test keeps the Linux-proven
+  1024x600 fallback timing and forces the HDMI route to stay initialized even
+  if early HPD is low.
+
 Installed framebuffer-test package:
 
 - Package SHA-256:

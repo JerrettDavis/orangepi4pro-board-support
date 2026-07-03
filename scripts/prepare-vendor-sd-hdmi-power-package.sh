@@ -6,6 +6,7 @@ vendor_package=${VENDOR_PACKAGE:-/usr/lib/linux-u-boot-current-orangepi4pro_1.0.
 output=${OUTPUT:-/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_vendor-sd-scriptfirst-hdmi-power.fex}
 work_dir=$(mktemp -d)
 fast_1024x600=false
+force_route=false
 trap 'rm -rf "$work_dir"' EXIT
 
 usage() {
@@ -13,7 +14,7 @@ usage() {
 Prepare a vendor SD U-Boot package with script-first boot and corrected HDMI power.
 
 Usage:
-  scripts/prepare-vendor-sd-hdmi-power-package.sh [--vendor PACKAGE] [--output PACKAGE] [--fast-1024x600]
+  scripts/prepare-vendor-sd-hdmi-power-package.sh [--vendor PACKAGE] [--output PACKAGE] [--fast-1024x600] [--force-route]
 
 This is file-only. It:
   - extracts the vendor U-Boot item from an Allwinner TOC1 package;
@@ -28,6 +29,8 @@ This is file-only. It:
     TCON clock before enabling output;
   - optionally sets uhdmi_fast_output=1 and replaces U-Boot's compiled HDMI
     default 1920x1080 mode with the cyberdeck panel's 1024x600 timing;
+  - optionally marks the HDMI display route force-output so display_init does
+    not deinitialize the route when early HPD detection is low;
   - rebuilds the package checksum.
 
 It does not write block devices, MTD, SPI, partitions, filesystems, or firmware.
@@ -46,6 +49,9 @@ while [ "$#" -gt 0 ]; do
       ;;
     --fast-1024x600)
       fast_1024x600=true
+      ;;
+    --force-route)
+      force_route=true
       ;;
     -h|--help)
       usage
@@ -165,6 +171,11 @@ else
 fi
 
 hdmi_node=$soc_node/hdmi0@5520000
+route_node=$soc_node/sunxi-drm/route/disp0_hdmi0
+if ! fdtget "$work_dir/u-boot.dtb" "$route_node" status >/dev/null 2>&1; then
+  printf 'ERROR: could not locate HDMI display route in embedded U-Boot DTB: %s\n' "$route_node" >&2
+  exit 1
+fi
 if fdtget -l "$work_dir/u-boot.dtb" "$soc_node/twi@7083000/pmu@36/regulators@0" >/dev/null 2>&1; then
   regulators_node=$soc_node/twi@7083000/pmu@36/regulators@0
 elif fdtget -l "$work_dir/u-boot.dtb" "$soc_node/pmu@36/regulators@0" >/dev/null 2>&1; then
@@ -203,6 +214,9 @@ if [ "$fast_1024x600" = true ]; then
   fdtput -t x "$work_dir/u-boot.dtb" "$hdmi_node" uhdmi_fast_output 0x1
 else
   fdtput -t x "$work_dir/u-boot.dtb" "$hdmi_node" uhdmi_fast_output 0x0
+fi
+if [ "$force_route" = true ]; then
+  fdtput "$work_dir/u-boot.dtb" "$route_node" force-output
 fi
 
 if ! fdtget "$work_dir/u-boot.dtb" "$hdmi_node" clock-names | grep -qw 'clk_tcon_tv'; then
@@ -247,6 +261,13 @@ fdtget "$work_dir/u-boot.dtb" "$hdmi_node" clock-names | grep -qw 'clk_tcon_tv' 
     printf 'ERROR: clk_tcon_tv HDMI clock patch did not stick\n' >&2
     exit 1
   }
+if [ "$force_route" = true ]; then
+  fdtget "$work_dir/u-boot.dtb" "$route_node" force-output >/dev/null 2>&1 \
+    || {
+      printf 'ERROR: HDMI route force-output patch did not stick\n' >&2
+      exit 1
+    }
+fi
 
 python3 - "$work_dir/u-boot-scriptfirst.bin" "$work_dir/u-boot.dtb" "$dtb_offset" "$dtb_size" "$work_dir/u-boot-hdmi-power.bin" <<'PY'
 from pathlib import Path
@@ -348,5 +369,6 @@ printf '  cldo2_phandle=%s\n' "$cldo2_phandle"
 printf '  uhdmi_power_count=2\n'
 printf '  clk_tcon_tv=enabled\n'
 printf '  fast_1024x600=%s\n' "$fast_1024x600"
+printf '  force_route=%s\n' "$force_route"
 printf '\nPrepared vendor SD HDMI-power package:\n'
 sha256sum "$output"
