@@ -30,6 +30,7 @@ hdmi_pattern_full_reinit_patch=${HDMI_PATTERN_FULL_REINIT_PATCH:-"$repo_root/con
 hdmi_reinit_stage_diag_patch=${HDMI_REINIT_STAGE_DIAG_PATCH:-"$repo_root/configs/u-boot/0016-add-hdmi-reinit-stage-diagnostics.patch"}
 drm_reinit_visual_diag_patch=${DRM_REINIT_VISUAL_DIAG_PATCH:-"$repo_root/configs/u-boot/0017-add-drm-reinit-visual-diagnostic.patch"}
 tcon_hdmi_clock_sequence_patch=${TCON_HDMI_CLOCK_SEQUENCE_PATCH:-"$repo_root/configs/u-boot/0018-use-linux-like-hdmi-tcon-clock-sequence.patch"}
+hdmi_fc_iteration_patch=${HDMI_FC_ITERATION_PATCH:-"$repo_root/configs/u-boot/0019-sync-linux-hdmi-fc-iteration-and-diag.patch"}
 apply_drm_reinit_patch=${APPLY_DRM_REINIT_PATCH:-false}
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
 cross_compile=${CROSS_COMPILE:-arm-linux-gnueabi-}
@@ -271,6 +272,17 @@ if [ "$mode" = bootmenu ]; then
     "$work_dir/drivers/video/drm/sunxi_device/sunxi_tcon.c" \
     || {
       printf 'ERROR: HDMI TCON clock sequence patch did not apply cleanly\n' >&2
+      exit 1
+    }
+  if [ ! -r "$hdmi_fc_iteration_patch" ]; then
+    printf 'ERROR: HDMI frame-composer iteration patch not readable: %s\n' "$hdmi_fc_iteration_patch" >&2
+    exit 1
+  fi
+  git -C "$work_dir" apply --recount "$hdmi_fc_iteration_patch"
+  grep -q 'dw_fc_iteration_process();' \
+    "$work_dir/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_avp.c" \
+    || {
+      printf 'ERROR: HDMI frame-composer iteration patch did not apply cleanly\n' >&2
       exit 1
     }
   if [ "$apply_drm_reinit_patch" = true ]; then

@@ -644,6 +644,31 @@ blocker. The U-Boot DRM path believes it displayed a logo, but HDMI is not
 delivering a valid visible signal until Linux later performs its full
 1024x600 mode-change sequence.
 
+2026-07-03 Linux frame-composer iteration candidate:
+
+- Patch:
+  `configs/u-boot/0019-sync-linux-hdmi-fc-iteration-and-diag.patch`
+- Rationale: Linux's working HDMI20 path performs a frame-composer iteration
+  write, `dw_write(FC_INVIDCONF, dw_read(FC_INVIDCONF))`, at the end of AVP
+  configuration. The vendor U-Boot copy was missing this step. The same patch
+  also removes the `sw_init` guard around diagnostic DesignWare register reads
+  so `opi_hdmi_diag` reflects real register state instead of silently reporting
+  zeros when U-Boot's software flag is stale.
+- Build artifact:
+  `.build/u-boot/artifacts/bootmenu/u-boot-sun60iw2p1.bin`
+- Build artifact SHA-256:
+  `002934b2dec68ac776a3fa1dd1c84ff15d13ab0ebe0753d76ffb01b1c5b7bd11`
+- Build source:
+  Orange Pi U-Boot `v2018.05-sun60iw2`
+  `b791be842935b27268ae3d00e943a9075495f30a`
+- Safety: the known-unsafe full DRM reinit diagnostic remains disabled
+  (`apply_drm_reinit_patch=false`), and the artifact strings do not contain
+  `sunxi_drm reinit`.
+- Planned package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-fciter-1024x600.fex`
+- Planned test script: factory-logo preinit with a 15 second hold, defaulting
+  through the known-good NVMe legacy `bootm` path.
+
 2026-07-03 HDMI TCON clock-sequence candidate:
 
 - Patch:

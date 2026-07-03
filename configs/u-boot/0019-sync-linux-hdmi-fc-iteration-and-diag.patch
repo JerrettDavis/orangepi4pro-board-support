@@ -1,0 +1,74 @@
+diff --git a/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_avp.c b/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_avp.c
+index 8fbc6cf..357f7f8 100644
+--- a/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_avp.c
++++ b/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_avp.c
+@@ -1264,6 +1264,8 @@ int dw_avp_config(void)
+ 	/* config scramble */
+ 	dw_avp_config_scramble();
+ 
++	dw_fc_iteration_process();
++
+ 	hdmi_trace("dw avp config done\n");
+ 	return 0;
+ }
+diff --git a/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_fc.c b/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_fc.c
+index 9f17f86..0663537 100644
+--- a/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_fc.c
++++ b/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_fc.c
+@@ -910,4 +910,10 @@ int dw_infoframe_packet(void)
+ 	hdmi_trace("dw infoframe config done!\n");
+ 	return 0;
+ }
++
++int dw_fc_iteration_process(void)
++{
++	dw_write(FC_INVIDCONF, dw_read(FC_INVIDCONF));
++	return 0;
++}
+diff --git a/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_fc.h b/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_fc.h
+index 0a08847..e1ff023 100644
+--- a/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_fc.h
++++ b/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_fc.h
+@@ -123,6 +123,8 @@ u32 dw_fc_audio_get_sample_freq(void);
+ 
+ void dw_fc_audio_set_mute(u8 state);
+ 
++int dw_fc_iteration_process(void);
++
+ /*****************************************************************************
+  *                                                                           *
+  *                          Frame Composer Registers                         *
+diff --git a/drivers/video/drm/sunxi_drm_hdmi.c b/drivers/video/drm/sunxi_drm_hdmi.c
+index 4ebe174..f8d2eb4 100644
+--- a/drivers/video/drm/sunxi_drm_hdmi.c
++++ b/drivers/video/drm/sunxi_drm_hdmi.c
+@@ -717,14 +717,12 @@ static int _sunxi_hdmi_reinit_active_display(void)
+ 		top_cfg = top_phy_read(0);
+ 		top_stat = top_phy_read(4);
+ 	}
+-	if (hdmi->hdmi_core.dw_hdmi.sw_init) {
+-		phy_conf0 = (u8)dw_read(PHY_CONF0);
+-		phy_stat0 = (u8)dw_read(PHY_STAT0);
+-		mc_phyrstz = (u8)dw_read(MC_PHYRSTZ);
+-		mc_lockon = (u8)dw_read(MC_LOCKONCLOCK);
+-		fc_invid = (u8)dw_read(FC_INVIDCONF);
+-		fc_gcp = (u8)dw_read(FC_GCP);
+-	}
++	phy_conf0 = (u8)dw_read(PHY_CONF0);
++	phy_stat0 = (u8)dw_read(PHY_STAT0);
++	mc_phyrstz = (u8)dw_read(MC_PHYRSTZ);
++	mc_lockon = (u8)dw_read(MC_LOCKONCLOCK);
++	fc_invid = (u8)dw_read(FC_INVIDCONF);
++	fc_gcp = (u8)dw_read(FC_GCP);
+ 
+ 	snprintf(diag, sizeof(diag),
+ 		 "reinit=d%d,x%d,m%d,t%d,s%d,i%d,n%d,r%d,c%d,drv%d,drm%d,ms%d,mode%dx%d,clk%u,top%08x_%08x,core%02x%02x%02x%02x%02x%02x",
+@@ -1404,7 +1402,7 @@ static int do_sunxi_hdmi_env(struct cmd_tbl_s *cmdtp, int flag,
+ 		top_cfg = top_phy_read(0);
+ 		top_stat = top_phy_read(4);
+ 	}
+-	if (dw && dw->sw_init) {
++	if (dw) {
+ 		phy_conf0 = (u8)dw_read(PHY_CONF0);
+ 		phy_stat0 = (u8)dw_read(PHY_STAT0);
+ 		mc_phyrstz = (u8)dw_read(MC_PHYRSTZ);
