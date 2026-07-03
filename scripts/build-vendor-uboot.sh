@@ -27,6 +27,7 @@ hdmi_top_phy_pddq_patch=${HDMI_TOP_PHY_PDDQ_PATCH:-"$repo_root/configs/u-boot/00
 hdmi_pattern_reconfig_patch=${HDMI_PATTERN_RECONFIG_PATCH:-"$repo_root/configs/u-boot/0014-reconfigure-hdmi-before-pattern-test.patch"}
 hdmi_pattern_full_reinit_patch=${HDMI_PATTERN_FULL_REINIT_PATCH:-"$repo_root/configs/u-boot/0015-full-hdmi-reinit-before-pattern-test.patch"}
 hdmi_reinit_stage_diag_patch=${HDMI_REINIT_STAGE_DIAG_PATCH:-"$repo_root/configs/u-boot/0016-add-hdmi-reinit-stage-diagnostics.patch"}
+drm_reinit_visual_diag_patch=${DRM_REINIT_VISUAL_DIAG_PATCH:-"$repo_root/configs/u-boot/0017-add-drm-reinit-visual-diagnostic.patch"}
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
 cross_compile=${CROSS_COMPILE:-arm-linux-gnueabi-}
 jobs=${JOBS:-$(nproc)}
@@ -248,6 +249,17 @@ if [ "$mode" = bootmenu ]; then
     "$work_dir/drivers/video/drm/sunxi_drm_hdmi.c" \
     || {
       printf 'ERROR: HDMI reinit stage diagnostics patch did not apply cleanly\n' >&2
+      exit 1
+    }
+  if [ ! -r "$drm_reinit_visual_diag_patch" ]; then
+    printf 'ERROR: DRM reinit visual diagnostics patch not readable: %s\n' "$drm_reinit_visual_diag_patch" >&2
+    exit 1
+  fi
+  git -C "$work_dir" apply --recount "$drm_reinit_visual_diag_patch"
+  grep -q 'sunxi_drm_reinit_active' \
+    "$work_dir/drivers/video/drm/sunxi_drm_drv.c" \
+    || {
+      printf 'ERROR: DRM reinit visual diagnostics patch did not apply cleanly\n' >&2
       exit 1
     }
   if [ ! -r "$fragment" ]; then

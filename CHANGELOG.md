@@ -14,3 +14,5 @@
 - Added a U-Boot HDMI reinit stage diagnostic patch that records the real
   disable, mode-set, TCON init, clock-rate, HDMI config, TOP PHY, and
   DesignWare core state for the pre-OS HDMI pattern test.
+- Added a U-Boot DRM reinit diagnostic command that reruns full display
+  disable/init/enable before the HDMI pattern test.

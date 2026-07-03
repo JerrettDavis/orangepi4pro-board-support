@@ -563,3 +563,24 @@ selector defaults while the factory display path is retested.
   If the screen is still black before Linux, that field should identify the
   first failing stage or prove that all functions returned zero while the TOP
   PHY/DesignWare registers still stayed idle.
+
+2026-07-03 DRM full-display reinit plus HDMI pattern package:
+
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-drm-reinit-hdmi-pattern-1024x600.fex`
+- Package SHA-256:
+  `34f52a23883a427d6471bdfc69654ef853a6f96a1f406a732acd64a35555852f`
+- U-Boot item SHA-256:
+  `bf4cbf09c7f910d4f3d9a8be3914606d7c5023a0bb6a63907c5cc96fb1f0fdf0`
+- Build command:
+  `HOME=/root APPLY_DISPLAY_MODE_PATCH=true scripts/build-vendor-uboot.sh --bootmenu --clean`
+- Rationale: the stage diagnostic showed all connector-level HDMI reinit calls
+  returned success while the visible signal still failed. This package adds
+  `sunxi_drm reinit`, which runs the higher-level U-Boot display pipeline
+  (`display_disable`, `display_init`, `display_enable`) before the HDMI20
+  internal red-pattern test. It also reads DesignWare HDMI registers
+  unconditionally because this BSP never sets `dw_hdmi.sw_init`.
+- Expected comparison after reboot: the command line should include
+  `opi_drmre_ok,drmreinit=...` if the full display reinit path completed, plus
+  refreshed `opi_pre_hdmi`, `opi_reinit_reinit`, and `opi_post_hdmi` fields with
+  real DesignWare register values instead of values hidden by `sw_init`.
