@@ -916,3 +916,28 @@ delivering a valid visible signal until Linux later performs its full
   `1024x600`, `clk_tcon_tv`, `clk_bus_hdmi`, `sunxi_drm_env`,
   `sunxi_hdmi_env`, and script-first `scan_dev_for_boot`; they do not include
   `sunxi_drm reinit`.
+- Reboot result: Linux reached the NVMe root, but both diagnostics regressed to
+  `opi_logo_hdmi=diag-missing` and `opi_logo_drm=diag-missing`. The diagnostic
+  command strings still exist in the installed package, so the broader embedded
+  DTB patch likely changed display initialization enough that those commands
+  return failure. This package is not a useful diagnostic baseline.
+
+2026-07-03 forced cyberdeck-mode plus HDMI clock-only DTB package:
+
+- Packaging command:
+  `scripts/prepare-vendor-sd-hdmi-clock-package.sh --vendor /usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex --uboot .build/u-boot/artifacts/scriptfirst-diag-modeclock/u-boot-sun60iw2p1.bin --output /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-scriptfirst-diag-modeclock-force1024-hdmiclkonly.fex`
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-scriptfirst-diag-modeclock-force1024-hdmiclkonly.fex`
+- Package SHA-256:
+  `30a2e74b02aaaef585c38775c8cf31b73763a0f4ed09d563d1e3c3d213b91ddd`
+- U-Boot item SHA-256:
+  `c2b16f210805d35bae323bd646855c8e29e7e6763d5c14989a5d278e39f75d48`
+- Scope: same forced `1024x600@49 MHz` passive diagnostic U-Boot, plus only
+  embedded DTB HDMI clock binding normalization:
+  `clk_tcon_tv clk_hdmi clk_hdmi_24M clk_bus_hdmi rst_main rst_sub`.
+  It does not add CLDO2 HDMI power properties, does not set fast-output, does
+  not force the HDMI route, and preserves vendor monitor/SCP blobs.
+- Safety validation: package strings include `drm hdmi force cyberdeck mode`,
+  `1024x600`, `clk_tcon_tv`, `clk_bus_hdmi`, `sunxi_drm_env`,
+  `sunxi_hdmi_env`, and script-first `scan_dev_for_boot`; they do not include
+  `sunxi_drm reinit`.
