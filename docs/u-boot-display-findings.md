@@ -43,18 +43,22 @@ Current candidate:
 - `scripts/generate-uboot-selector-logo.py` writes a deterministic replacement
   `drivers/video/drm/boot_bmp.h` before compiling U-Boot.
 - `scripts/build-vendor-uboot.sh --selector-logo --clean` builds the
-  script-first bootmenu U-Boot with that embedded selector image.
+  script-first bootmenu U-Boot with that embedded selector image and the
+  `sunxi_drm_env` diagnostic command.
 - The generated selector BMP is 320 x 240 x 24-bit and 230454 bytes, so it is
   comfortably below the vendor logo decompression buffer size.
 - The installed SD boot-package test candidate is
-  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-bootmenu-scriptfirst-selector-logo.fex`.
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-bootmenu-scriptfirst-selector-logo-drm-env.fex`.
 - Candidate SHA-256:
-  `bad9dc0a68dd1c047982c85f13192a8759c16298f592785f18db1d8f74971007`.
+  `fd0222a54312c8c20c26f99509ec466ed1afd2fef34ca3f56071d2f4c97731e2`.
+- U-Boot item SHA-256:
+  `cca39d1ef71be8a3f94f719f6265a8813248c299a8546289078143e9cd0f4ed7`.
 - Recovery backup:
-  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260702T234205Z.bin`.
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260703T010004Z.bin`.
 - Recovery backup SHA-256:
-  `9fabc67f143b3aa5e15ad17368684e5597196555891c886e92fc17a60ca2a4ec`.
+  `74f1cffbafe1c14c5a6ff6e410a73b3b51bb08f678fb151c806d8ff781209bef`.
 
-This candidate is installed for the next recovery-SD boot test. It is intended
-to make the boot window visibly identifiable first; actual text-menu rendering
-still depends on whether U-Boot's console backend reaches the panel.
+This candidate is intended to prove whether vendor U-Boot has an active DRM
+connector and framebuffer before Linux starts. The paired boot script appends
+`opi_pre_*` and `opi_post_*` diagnostics to `/proc/cmdline`; actual text-menu
+rendering still depends on whether U-Boot's console backend reaches the panel.

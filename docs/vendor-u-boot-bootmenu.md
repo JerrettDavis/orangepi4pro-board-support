@@ -118,6 +118,20 @@ The generated BMP is also staged as
 `.build/u-boot/artifacts/bootmenu-selector-logo/selector-boot.bmp` for visual
 inspection.
 
+Build the script-first menu variant with the replacement embedded boot logo and
+the U-Boot DRM environment diagnostic command:
+
+```bash
+scripts/build-vendor-uboot.sh --selector-logo --clean
+scripts/prepare-sd-bootmenu-package.sh \
+  --uboot .build/u-boot/artifacts/bootmenu-selector-logo/u-boot-sun60iw2p1.bin \
+  --output /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-bootmenu-scriptfirst-selector-logo-drm-env.fex
+```
+
+This variant adds `sunxi_drm_env`, which exports the vendor DRM connector,
+mode, framebuffer, and backlight state into `opi_drm_diag`. It is intended for
+boot-script diagnostics and does not draw graphics by itself.
+
 ## Menu Fragment
 
 `configs/u-boot/orangepi4pro-bootmenu.fragment` enables:
@@ -194,6 +208,24 @@ backup_sha256=9fabc67f143b3aa5e15ad17368684e5597196555891c886e92fc17a60ca2a4ec
 
 The installed bytes were read back from `/dev/mmcblk1` at `bs=8192 skip=2050`
 and matched the candidate for the exact 1388544-byte package length.
+
+The 2026-07-03 diagnostic candidate uses the same script-first bootmenu U-Boot
+and embedded selector logo, plus `sunxi_drm_env` for pre-kernel display-state
+capture:
+
+```text
+device=/dev/mmcblk1
+package=/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-bootmenu-scriptfirst-selector-logo-drm-env.fex
+package_sha256=fd0222a54312c8c20c26f99509ec466ed1afd2fef34ca3f56071d2f4c97731e2
+u_boot_item_sha256=cca39d1ef71be8a3f94f719f6265a8813248c299a8546289078143e9cd0f4ed7
+selector_bmp_sha256=bc3dcbd5a046168fe3b463b66da96cddafd84c0779c804f308b5d788c46bcb03
+selector_bmp=file: PC bitmap, Windows 3.x format, 320 x 240 x 24, cbSize 230454
+backup=/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260703T010004Z.bin
+backup_sha256=74f1cffbafe1c14c5a6ff6e410a73b3b51bb08f678fb151c806d8ff781209bef
+```
+
+This package has been inspected, installed to `/dev/mmcblk1`, and verified by
+reading the package slot back from SD.
 
 The installed platform script shows the vendor package write locations:
 
