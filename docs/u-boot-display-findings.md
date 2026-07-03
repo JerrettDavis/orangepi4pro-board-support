@@ -666,6 +666,10 @@ delivering a valid visible signal until Linux later performs its full
   `sunxi_drm reinit`.
 - Planned package:
   `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-fciter-1024x600.fex`
+- Package SHA-256:
+  `a6ff4344d16002f4274a30fee0c4ed861fb6e4e1cedd9251a810ab38e69a2db0`
+- U-Boot item SHA-256:
+  `531c73cf5f7ace30e2dfba95e52a0beaa3beccf830984f92d5a259649967e556`
 - Planned test script: factory-logo preinit with a 15 second hold, defaulting
   through the known-good NVMe legacy `bootm` path.
 
