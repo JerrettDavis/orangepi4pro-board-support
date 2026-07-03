@@ -37,6 +37,7 @@ hdmi_top_phy_diag_patch=${HDMI_TOP_PHY_DIAG_PATCH:-"$repo_root/configs/u-boot/00
 hdmi_mc_clock_patch=${HDMI_MC_CLOCK_PATCH:-"$repo_root/configs/u-boot/0023-sync-linux-hdmi-mc-clock-enable.patch"}
 hdmi_tcon_format_patch=${HDMI_TCON_FORMAT_PATCH:-"$repo_root/configs/u-boot/0024-pass-hdmi-format-to-tcon-reinit.patch"}
 apply_drm_reinit_patch=${APPLY_DRM_REINIT_PATCH:-false}
+applied_display_mode_patch=false
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
 cross_compile=${CROSS_COMPILE:-arm-linux-gnueabi-}
 jobs=${JOBS:-$(nproc)}
@@ -46,7 +47,7 @@ usage() {
   cat <<'USAGE'
 Build the Orange Pi vendor U-Boot tree for sun60iw2 without flashing anything.
 
-Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu|--scriptfirst-logo|--bootgui-scriptfirst] [--selector-logo] [--clean]
+Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu|--scriptfirst-logo|--scriptfirst-diag|--bootgui-scriptfirst] [--selector-logo] [--clean]
 
 Environment overrides:
   SOURCE_DIR       Existing local vendor tree. Default:
@@ -85,6 +86,9 @@ while [ "$#" -gt 0 ]; do
     --scriptfirst-logo)
       mode=scriptfirst-logo
       selector_logo=true
+      ;;
+    --scriptfirst-diag)
+      mode=scriptfirst-diag
       ;;
     --bootgui-scriptfirst)
       mode=bootgui-scriptfirst
@@ -158,12 +162,38 @@ mkdir -p "$artifact_dir/lichee-chip/orangepi4pro/bin" "$artifact_dir/lichee-plat
 
 make "${make_common[@]}" "$defconfig"
 
-if [ "$mode" = bootmenu ] || [ "$mode" = scriptfirst-logo ] || [ "$mode" = bootgui-scriptfirst ]; then
+if [ "$mode" = bootmenu ] || [ "$mode" = scriptfirst-logo ] || [ "$mode" = scriptfirst-diag ] || [ "$mode" = bootgui-scriptfirst ]; then
   if [ ! -r "$bootmenu_patch" ]; then
     printf 'ERROR: bootmenu source patch not readable: %s\n' "$bootmenu_patch" >&2
     exit 1
   fi
   git -C "$work_dir" apply "$bootmenu_patch"
+fi
+
+if [ "$mode" = scriptfirst-diag ]; then
+  if [ ! -r "$display_diag_patch" ]; then
+    printf 'ERROR: display diagnostic patch not readable: %s\n' "$display_diag_patch" >&2
+    exit 1
+  fi
+  git -C "$work_dir" apply "$display_diag_patch"
+  if [ ! -r "$hdmi_diag_patch" ]; then
+    printf 'ERROR: HDMI diagnostic patch not readable: %s\n' "$hdmi_diag_patch" >&2
+    exit 1
+  fi
+  git -C "$work_dir" apply --recount "$hdmi_diag_patch"
+  grep -q 'sunxi_hdmi_env' \
+    "$work_dir/drivers/video/drm/sunxi_drm_hdmi.c" \
+    || {
+      printf 'ERROR: HDMI diagnostic patch did not apply cleanly\n' >&2
+      exit 1
+    }
+  grep -q 'sunxi_drm_env' \
+    "$work_dir/drivers/video/drm/sunxi_drm_drv.c" \
+    || {
+      printf 'ERROR: DRM diagnostic patch did not apply cleanly\n' >&2
+      exit 1
+    }
+  make "${make_common[@]}" olddefconfig
 fi
 
 if [ "$mode" = bootmenu ]; then
@@ -178,6 +208,7 @@ if [ "$mode" = bootmenu ]; then
       exit 1
     fi
     git -C "$work_dir" apply "$display_mode_patch"
+    applied_display_mode_patch=true
   fi
   if [ ! -r "$display_fbtest_patch" ]; then
     printf 'ERROR: framebuffer visual test patch not readable: %s\n' "$display_fbtest_patch" >&2
@@ -425,6 +456,7 @@ defconfig=$defconfig
 mode=$mode
 selector_logo=$selector_logo
 apply_display_mode_patch=$apply_display_mode_patch
+applied_display_mode_patch=$applied_display_mode_patch
 apply_drm_reinit_patch=$apply_drm_reinit_patch
 bootgui_fragment=$bootgui_fragment
 cross_compile=$cross_compile

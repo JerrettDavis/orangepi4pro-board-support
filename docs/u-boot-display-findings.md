@@ -825,3 +825,32 @@ delivering a valid visible signal until Linux later performs its full
   `bootchooser=uboot-logo-preinit-fail`.
 - Safety: this test writes only `/boot`, `/boot/efi`, and the mounted SD
   `/boot` copy. It does not reinstall U-Boot or write bootloader sectors.
+- Reboot result: Linux reached `bootchooser=uboot-logo-preinit-ok`, proving
+  that the stock `sunxi_show_logo` command returned success before the legacy
+  NVMe boot path. The command was still not visible on the HDMI display.
+
+2026-07-03 passive stock-logo diagnostic package:
+
+- Build command:
+  `scripts/build-vendor-uboot.sh --scriptfirst-diag --clean`
+- Build source:
+  Orange Pi U-Boot `v2018.05-sun60iw2`
+  `b791be842935b27268ae3d00e943a9075495f30a`
+- Build artifact:
+  `.build/u-boot/artifacts/scriptfirst-diag/u-boot-sun60iw2p1.bin`
+- Build artifact SHA-256:
+  `357c962149d205e7f3f3822d3a47b97529ce6e5065cdc76044c9c496d5be45ed`
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-scriptfirst-passive-diag.fex`
+- Package SHA-256:
+  `71cb5564f5d7249bece9c35a449bb199a9b6836dcb3f8dd2b946bea61b6b8ceb`
+- U-Boot item SHA-256:
+  `357c962149d205e7f3f3822d3a47b97529ce6e5065cdc76044c9c496d5be45ed`
+- Scope: script-first scan order plus passive `sunxi_drm_env` and
+  `sunxi_hdmi_env` commands only. The artifact preserves the embedded
+  `boot.bmp` fallback and does not contain the known-unsafe `sunxi_drm reinit`
+  command.
+- Planned test: keep the stock-logo preinit path staged with
+  `selector_diag_force_bootm=true`. The expected command line after reboot is
+  `bootchooser=uboot-logo-preinit-ok` plus `opi_logo_hdmi=...` and
+  `opi_logo_drm=...` diagnostics captured after `sunxi_show_logo`.
