@@ -84,6 +84,19 @@ if [ "$package_size" -le 0 ]; then
   exit 1
 fi
 
+package_sha=$(sha256sum "$package" | awk '{print $1}')
+case "$package_sha" in
+  34f52a23883a427d6471bdfc69654ef853a6f96a1f406a732acd64a35555852f)
+    if [ "${ORANGEPI4PRO_ALLOW_UNSAFE_BOOTLOADER_WRITE:-}" != 1 ]; then
+      printf 'ERROR: refusing known-unsafe boot package: %s\n' "$package_sha" >&2
+      printf '  package=%s\n' "$package" >&2
+      printf '  reason=2026-07-03 DRM full-display reinit package did not boot and required external recovery\n' >&2
+      printf 'Set ORANGEPI4PRO_ALLOW_UNSAFE_BOOTLOADER_WRITE=1 only for deliberate bench recovery testing.\n' >&2
+      exit 1
+    fi
+    ;;
+esac
+
 if [ $((package_size % 4)) -ne 0 ]; then
   printf 'ERROR: package size is not 4-byte aligned: %s\n' "$package_size" >&2
   exit 1
@@ -119,6 +132,7 @@ backup_path="$backup_dir/$(basename "$device")-bootloader-before-${timestamp}.bi
 
 printf 'device=%s\n' "$device"
 printf 'package=%s\n' "$package"
+printf 'package_sha256=%s\n' "$package_sha"
 printf 'package_size=%s\n' "$package_size"
 printf 'write_offset=%s\n' "$write_offset"
 printf 'write_end=%s\n' "$write_end"

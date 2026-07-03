@@ -584,3 +584,23 @@ selector defaults while the factory display path is retested.
   `opi_drmre_ok,drmreinit=...` if the full display reinit path completed, plus
   refreshed `opi_pre_hdmi`, `opi_reinit_reinit`, and `opi_post_hdmi` fields with
   real DesignWare register values instead of values hidden by `sw_init`.
+- Result after reboot: unsafe. The board did not complete a normal boot from
+  this package and required external SD recovery from another machine.
+- Do not reinstall this package for normal testing. The SD installer now refuses
+  this SHA-256 unless `ORANGEPI4PRO_ALLOW_UNSAFE_BOOTLOADER_WRITE=1` is set for
+  deliberate bench recovery testing.
+
+2026-07-03 recovered safe baseline:
+
+- Installed SD TOC1 package:
+  `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex`
+- Package SHA-256:
+  `e626234a6eb9420ac29f515dd6acc543e7f0876e3dc086eec2fe221a50cc54f2`
+- Verified state: byte-for-byte match in `/dev/mmcblk1` at `bs=8192`,
+  `seek=2050`.
+- Running marker:
+  `bootchooser=extlinux-legacy-nvme`
+- Current conclusion: boot reliability is restored with the vendor NVMe
+  package, but pre-OS HDMI output is still absent. Further visual work should
+  start from this known-good baseline and avoid reinstalling the failed DRM
+  reinit package.
