@@ -465,3 +465,29 @@ selector defaults while the factory display path is retested.
   to `scripts/build-vendor-uboot.sh`, so the package still had
   `phy_pddq = 0x1`. The build script now applies `0013` and fails if the
   generated work tree does not contain `phy_pddq = 0x0` before compiling.
+
+2026-07-03 HDMI pattern reconfiguration package:
+
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-pattern-reconfig-1024x600.fex`
+- Package SHA-256:
+  `5e1e7209d7fe8535c998c640593f280a6b8f94f7afc4115cb11218189687d92d`
+- U-Boot item SHA-256:
+  `56e9e8e882485333850f928920f0d79914e0fd36b8f5a7af8ff2099301bae972`
+- Raw built U-Boot SHA-256:
+  `2b1b16851fffec7c10bf0a490d1d7884079a7f9c10b552fca6ce5de8671f33f8`
+- Source package:
+  `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex`
+- Build command:
+  `HOME=/root APPLY_DISPLAY_MODE_PATCH=true scripts/build-vendor-uboot.sh --bootmenu --clean`
+- Rationale: the corrected top-PHY package changed `top0_00000017` to
+  `top0_00000015`, proving the new top-PHY code executed, but the DesignWare
+  HDMI core status fields stayed zero while Linux later configured and locked
+  HDMI successfully. This package forces `_sunxi_drv_hdmi_enable()` immediately
+  before enabling the HDMI20 internal pattern and records its return value in
+  `opi_hdmi_pattern_reconfig`.
+- Expected comparison after reboot: the command line should contain
+  `opi_pat_hdmipat=req1,reconfig0,...`. If pre-OS HDMI is still black or no
+  signal, compare `opi_pre_hdmi`, `opi_pat_hdmi`, and `opi_post_hdmi` to see
+  whether the forced reconfigure changed `phy`, `stat`, `rst`, `lock`, `vid`,
+  or `gcp` from zero.

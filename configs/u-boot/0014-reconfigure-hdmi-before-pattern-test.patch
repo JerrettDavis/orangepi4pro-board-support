@@ -1,0 +1,34 @@
+diff --git a/drivers/video/drm/sunxi_drm_hdmi.c b/drivers/video/drm/sunxi_drm_hdmi.c
+index b1b4154..2c4ae02 100644
+--- a/drivers/video/drm/sunxi_drm_hdmi.c
++++ b/drivers/video/drm/sunxi_drm_hdmi.c
+@@ -624,7 +624,19 @@ ssize_t _sunxi_hdmi_sysfs_pattern_store(struct udevice *dev, int bit)
+ {
+ 	struct sunxi_drm_hdmi *hdmi = dev_get_priv(dev);
+ 	char diag[96];
++	int ret = 0;
+ 
++	if (bit && !IS_ERR_OR_NULL(hdmi)) {
++		/*
++		 * The A733 fast-output path can leave drv_enable set even when
++		 * the HDMI PHY/main-control programming did not stick.  Force a
++		 * bounded reconfigure before the internal pattern generator so
++		 * this diagnostic tests a fully configured transmitter.
++		 */
++		hdmi->hdmi_ctrl.drv_enable = 0x0;
++		ret = _sunxi_drv_hdmi_enable(hdmi);
++		env_set_ulong("opi_hdmi_pattern_reconfig", ret);
++	}
++
+ 	switch (bit) {
+ 	case 1:
+ 		sunxi_hdmi_video_set_pattern(0x1, 0xFF0000);
+@@ -646,7 +658,7 @@ ssize_t _sunxi_hdmi_sysfs_pattern_store(struct udevice *dev, int bit)
+ 	snprintf(diag, sizeof(diag),
+-		 "hdmipat=req%d,tcon%d,force%02x,r%02x,g%02x,b%02x",
++		 "hdmipat=req%d,reconfig%d,tcon%d,force%02x,r%02x,g%02x,b%02x",
+ 		 bit,
++		 ret,
+ 		 hdmi && hdmi->tcon_dev ? sunxi_tcon_pattern_get(hdmi->tcon_dev) : -1,
+ 		 (u8)dw_read(FC_DBGFORCE), (u8)dw_read(FC_DBGTMDS2),
+ 		 (u8)dw_read(FC_DBGTMDS1), (u8)dw_read(FC_DBGTMDS0));
