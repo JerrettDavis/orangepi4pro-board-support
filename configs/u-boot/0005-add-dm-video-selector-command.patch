@@ -15,7 +15,7 @@ new file mode 100644
 index 0000000000..4aa2b4f9ee
 --- /dev/null
 +++ b/cmd/opi_bootselect.c
-@@ -0,0 +1,394 @@
+@@ -0,0 +1,405 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +#include <common.h>
 +#include <command.h>
@@ -348,6 +348,19 @@ index 0000000000..4aa2b4f9ee
 +		timeout = simple_strtoul(argv[1], NULL, 10);
 +	if (timeout < 0)
 +		timeout = 0;
++
++	/*
++	 * The vendor DRM logo command uses display_logo(), which is the same
++	 * path used by the stock boot splash.  The embedded boot.bmp in selector
++	 * builds is generated as a static selector screen, so show it before
++	 * direct framebuffer updates.
++	 */
++	if (!run_command("sunxi_show_logo", 0)) {
++		env_set("opi_bootselect_logo", "logo_ok");
++		mdelay(350);
++	} else {
++		env_set("opi_bootselect_logo", "logo_fail");
++	}
 +
 +	run_command("usb start", 0);
 +	env_set("stdin", "serial,usbkbd");
