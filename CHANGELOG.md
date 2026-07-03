@@ -9,3 +9,8 @@
 - Documented the vendor 5.15 cyberdeck kernel build baseline.
 - Added CI checks, including compilation of the touch helper C sources.
 
+## Unreleased
+
+- Added a U-Boot HDMI reinit stage diagnostic patch that records the real
+  disable, mode-set, TCON init, clock-rate, HDMI config, TOP PHY, and
+  DesignWare core state for the pre-OS HDMI pattern test.

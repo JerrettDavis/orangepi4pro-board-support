@@ -542,3 +542,24 @@ selector defaults while the factory display path is retested.
   still appear, but `opi_post_hdmi` should show nonzero HDMI core fields or a
   visible red pattern. If it remains black/no-signal and the HDMI fields remain
   zero, the remaining gap is earlier than U-Boot's connector enable path.
+
+2026-07-03 HDMI reinit stage-diagnostic package:
+
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-reinitdiag-pattern-1024x600.fex`
+- Package SHA-256:
+  `78b54a1b96aea7ca0456d8085d915e2eaedcffef6117e7d4ca6889eeb87c50e7`
+- U-Boot item SHA-256:
+  `ad176262afd51248a3c61ccff72185a66bea7fbf2916a012b0c3112210a0facf`
+- Build command:
+  `HOME=/root APPLY_DISPLAY_MODE_PATCH=true scripts/build-vendor-uboot.sh --bootmenu --clean`
+- Rationale: the full-reinit package returned success but left the HDMI core
+  registers at zero. The new `0016` patch bypasses the wrapper functions that
+  swallow internal failures and records real return codes for driver disable,
+  TCON exit, HDMI mode conversion, timing conversion, output select, display
+  info setup, TCON init, HDMI clock rate, and `sunxi_hdmi_config()`.
+- Expected comparison after reboot: the command line should include
+  `opi_reinit_reinit=d...,x...,m...,t...,s...,i...,n...,r...,c...`.
+  If the screen is still black before Linux, that field should identify the
+  first failing stage or prove that all functions returned zero while the TOP
+  PHY/DesignWare registers still stayed idle.
