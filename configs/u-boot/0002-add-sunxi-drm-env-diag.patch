@@ -1,0 +1,105 @@
+diff --git a/drivers/video/drm/sunxi_drm_drv.c b/drivers/video/drm/sunxi_drm_drv.c
+index 8c5ad6ab4d..92f1bc0ef1 100644
+--- a/drivers/video/drm/sunxi_drm_drv.c
++++ b/drivers/video/drm/sunxi_drm_drv.c
+@@ -1545,6 +1545,87 @@ static int sunxi_de_online_wb(void)
+ 	return 0;
+ }
+ 
++static const char *sunxi_connector_type_name(int type)
++{
++	switch (type) {
++	case DRM_MODE_CONNECTOR_Unknown:
++		return "unknown";
++	case DRM_MODE_CONNECTOR_LVDS:
++		return "lvds";
++	case DRM_MODE_CONNECTOR_HDMIA:
++		return "hdmi-a";
++	case DRM_MODE_CONNECTOR_HDMIB:
++		return "hdmi-b";
++	case DRM_MODE_CONNECTOR_eDP:
++		return "edp";
++	case DRM_MODE_CONNECTOR_DSI:
++		return "dsi";
++	case DRM_MODE_CONNECTOR_DPI:
++		return "dpi";
++	case DRM_MODE_CONNECTOR_WRITEBACK:
++		return "writeback";
++	default:
++		return "other";
++	}
++}
++
++static int do_sunxi_drm_env(struct cmd_tbl_s *cmdtp, int flag, int argc,
++			    char *const argv[])
++{
++	struct sunxi_drm_device *drm = sunxi_drm_device_get();
++	struct display_state *state = NULL;
++	struct display_state *first = NULL;
++	struct drm_framebuffer *fb = NULL;
++	char diag[256];
++	int count = 0;
++
++	if (!drm || list_empty(&drm->display_list)) {
++		env_set("opi_drm_diag", "drm=missing");
++		env_set("opi_drm_diag_ok", "false");
++		return 1;
++	}
++
++	sunxi_drm_for_each_display(state, drm) {
++		if (!first)
++			first = state;
++		count++;
++		if (state->is_enable)
++			break;
++	}
++
++	if (!state)
++		state = first;
++	if (!state) {
++		env_set("opi_drm_diag", "drm=empty");
++		env_set("opi_drm_diag_ok", "false");
++		return 1;
++	}
++
++	fb = drm_framebuffer_lookup(state->drm, state->fb_id);
++	snprintf(diag, sizeof(diag),
++		 "drm=n%d,type=%d,conn=%s,init=%d,en=%d,bl=%d,mode=%ux%u,clk=%u,crtc=%d,tcon=%u,top=%u,fb=%d,fbw=%u,fbh=%u,force=%d",
++		 count,
++		 state->conn_state.type,
++		 sunxi_connector_type_name(state->conn_state.type),
++		 state->is_init ? 1 : 0,
++		 state->is_enable ? 1 : 0,
++		 state->backlight ? 1 : 0,
++		 state->conn_state.mode.hdisplay,
++		 state->conn_state.mode.vdisplay,
++		 state->conn_state.mode.clock,
++		 state->crtc_state.crtc_id,
++		 state->crtc_state.tcon_id,
++		 state->crtc_state.tcon_top_id,
++		 state->fb_id,
++		 fb ? fb->width : 0,
++		 fb ? fb->height : 0,
++		 state->force_output ? 1 : 0);
++
++	env_set("opi_drm_diag", diag);
++	env_set("opi_drm_diag_ok", "true");
++	return 0;
++}
++
+ static int do_sunxi_sunxi_drm(struct cmd_tbl_s *cmdtp, int flag, int argc,
+ 				char *const argv[])
+ {
+@@ -1602,6 +1683,12 @@ static char sunxi_drm_help_text[] =
+ 	"sunxi_drm colorbar [type] - Set clock frequency\n"
+ 	"sunxi_drm wb - Online Writeback image to boot-resource partition\n";
+ 
++U_BOOT_CMD(
++	sunxi_drm_env, 1, 1, do_sunxi_drm_env,
++	"export sunxi drm state to opi_drm_diag environment variable",
++	NULL
++);
++
+ U_BOOT_CMD(
+ 	sunxi_drm, 3, 1, do_sunxi_sunxi_drm,
+ 	"sunxi drm debug cmd",
