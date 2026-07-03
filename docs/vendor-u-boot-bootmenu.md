@@ -306,11 +306,16 @@ u_boot_item_sha256=77836181cc87b84559b11579eeb8388f216c51b8127951e2692a92101be6a
 template=/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex
 template_sha256=e626234a6eb9420ac29f515dd6acc543e7f0876e3dc086eec2fe221a50cc54f2
 patched_offset=0x92b8c
+backup=/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260703T061114Z.bin
+backup_sha256=cb94db218e1c03bbe21a5461b592f0b92f66bd2386fbfc29379bf0f07324123e
 ```
 
 This candidate is intended to test whether the factory A733 NVMe display
 payload restores the pre-kernel Orange Pi bootloader splash while still letting
 the script-first `/boot/boot.scr` selector path run.
+
+This package has been inspected, installed to `/dev/mmcblk1`, and verified by
+reading the package slot back from SD.
 
 The 2026-07-03 framebuffer-test diagnostic candidate adds `sunxi_drm fbtest`.
 It keeps the same script-first bootmenu, embedded selector logo, native
