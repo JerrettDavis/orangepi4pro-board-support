@@ -658,6 +658,12 @@ delivering a valid visible signal until Linux later performs its full
   `.build/u-boot/artifacts/bootmenu/u-boot-sun60iw2p1.bin`
 - Build artifact SHA-256:
   `7c9c6e781017a82dff400f5e31049cfdf69563d39b0b6d91aff2d5e31b5a4610`
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-rxsense-1024x600.fex`
+- Package SHA-256:
+  `59fe28f8c629ff194e413cc7dd2878c6a6aec7103744a0422a4a1c537576d3ff`
+- U-Boot item SHA-256:
+  `1f0cd3409f43a11909f3b18f199554258c69b434332bbd8bf61e6fa05c07498b`
 - Safety: the wait is bounded and non-fatal; it does not add or enable the
   unsafe full DRM reinit command.
 
