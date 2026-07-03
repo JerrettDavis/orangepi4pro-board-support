@@ -19,6 +19,8 @@
   prove whether pre-OS HDMI programmed the same registers as visible Linux.
 - Synced the U-Boot HDMI main-controller clock enable sequence with Linux so
   audio/PREP clock lock state can match the kernel-visible HDMI path.
+- Passed the selected HDMI pixel format into U-Boot TCON HDMI init and exported
+  the reinit format/software-enable fields in boot diagnostics.
 - Added a U-Boot HDMI reinit stage diagnostic patch that records the real
   disable, mode-set, TCON init, clock-rate, HDMI config, TOP PHY, and
   DesignWare core state for the pre-OS HDMI pattern test.

@@ -55,6 +55,23 @@ Captured 2026-07-02 after the video-first selector test hung before Linux.
   `4febc8f1543f071fd12d63949e3ca7a79f7b030c7668c212029221c17cce46c1`
 - Raw built U-Boot artifact SHA-256:
   `76cee5072f3f554eb26bdd93ee24dae1230cec83092e98c13c4ced0014071319`
+- The reboot with that package still exported `top10_00000033`, `stat03`, and
+  `lock70`, and the bootloader display stayed black until Linux. The Linux
+  re-enable path also passes `disp_cfg.format` and `sw_enable` into the TCON
+  HDMI init while U-Boot left those fields zero/default in the comparable
+  path.
+- Patch `configs/u-boot/0024-pass-hdmi-format-to-tcon-reinit.patch` passes
+  `hdmi->disp_config.format` into both the normal U-Boot HDMI enable path and
+  the bounded HDMI reinit diagnostic path, and records `fmt`/`sw` in
+  `opi_reinit_reinit`.
+- TCON format diagnostic package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-tconfmt-1024x600.fex`
+- Package SHA-256:
+  `1476e41aeae6bfeff49128146bfc5515beb03e3e2d83fad4c41bdf8d60ed6dec`
+- Packaged U-Boot item SHA-256:
+  `21b1fe5b5d03709d840b024d0d15ec96fe99a7e469c96189ed660a01b178fa5c`
+- Raw built U-Boot artifact SHA-256:
+  `ff649529abf00968a07c53eef5149b22776b285537ddf9c13f0ae56be910ade0`
 
 Known-good control-flow result:
 

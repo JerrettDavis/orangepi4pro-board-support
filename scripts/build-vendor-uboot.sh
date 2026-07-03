@@ -35,6 +35,7 @@ hdmi_phy_rxsense_patch=${HDMI_PHY_RXSENSE_PATCH:-"$repo_root/configs/u-boot/0020
 hdmi_top_phy_autocal_patch=${HDMI_TOP_PHY_AUTOCAL_PATCH:-"$repo_root/configs/u-boot/0021-sync-linux-top-phy-pll-autocal.patch"}
 hdmi_top_phy_diag_patch=${HDMI_TOP_PHY_DIAG_PATCH:-"$repo_root/configs/u-boot/0022-add-top-phy-pll-env-diag.patch"}
 hdmi_mc_clock_patch=${HDMI_MC_CLOCK_PATCH:-"$repo_root/configs/u-boot/0023-sync-linux-hdmi-mc-clock-enable.patch"}
+hdmi_tcon_format_patch=${HDMI_TCON_FORMAT_PATCH:-"$repo_root/configs/u-boot/0024-pass-hdmi-format-to-tcon-reinit.patch"}
 apply_drm_reinit_patch=${APPLY_DRM_REINIT_PATCH:-false}
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
 cross_compile=${CROSS_COMPILE:-arm-linux-gnueabi-}
@@ -331,6 +332,17 @@ if [ "$mode" = bootmenu ]; then
     "$work_dir/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_mc.c" \
     || {
       printf 'ERROR: HDMI MC clock patch did not apply cleanly\n' >&2
+      exit 1
+    }
+  if [ ! -r "$hdmi_tcon_format_patch" ]; then
+    printf 'ERROR: HDMI TCON format patch not readable: %s\n' "$hdmi_tcon_format_patch" >&2
+    exit 1
+  fi
+  git -C "$work_dir" apply --recount "$hdmi_tcon_format_patch"
+  grep -q 'disp_cfg.format = hdmi->disp_config.format;' \
+    "$work_dir/drivers/video/drm/sunxi_drm_hdmi.c" \
+    || {
+      printf 'ERROR: HDMI TCON format patch did not apply cleanly\n' >&2
       exit 1
     }
   if [ "$apply_drm_reinit_patch" = true ]; then
