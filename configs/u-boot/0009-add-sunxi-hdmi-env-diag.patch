@@ -1,0 +1,114 @@
+diff --git a/drivers/video/drm/sunxi_drm_hdmi.c b/drivers/video/drm/sunxi_drm_hdmi.c
+index 060fca1..8f006a0 100644
+--- a/drivers/video/drm/sunxi_drm_hdmi.c
++++ b/drivers/video/drm/sunxi_drm_hdmi.c
+@@ -21,6 +21,7 @@
+ #include "sunxi_drm_drv.h"
+ #include "sunxi_drm_helper_funcs.h"
+ #include "sunxi_drm_crtc.h"
++#include "sunxi_device/hardware/lowlevel_hdmi20/phy_top.h"
+ 
+ 
+ #define SUNXI_HDMI_EDID_LENGTH		(1024)
+@@ -1172,8 +1173,87 @@ U_BOOT_DRIVER(sunxi_drm_hdmi) = {
+ 	.priv_auto_alloc_size = sizeof(struct sunxi_drm_hdmi),
+ };
+ 
++static int do_sunxi_hdmi_env(struct cmd_tbl_s *cmdtp, int flag,
++			     int argc, char *const argv[])
++{
++	struct sunxi_drm_device *drm = sunxi_drm_device_get();
++	struct display_state *state = NULL;
++	struct sunxi_drm_connector *connector = NULL;
++	struct sunxi_drm_hdmi *hdmi = NULL;
++	struct sunxi_hdmi_ctrl_s *pctl = NULL;
++	struct sunxi_hdmi_res_s *res = NULL;
++	struct dw_hdmi_dev_s *dw = NULL;
++	unsigned long tcon_rate = 0;
++	unsigned long hdmi_rate = 0;
++	u32 top_cfg = 0;
++	u32 top_stat = 0;
++	u8 top_lock = 0;
++	u8 top_clk_sel = 0xff;
++	u8 top_pad_sel = 0xff;
++	char diag[256];
++
++	if (!drm || list_empty(&drm->display_list)) {
++		env_set("opi_hdmi_diag", "hdmi=drm-missing");
++		env_set("opi_hdmi_diag_ok", "false");
++		return 1;
++	}
++
++	sunxi_drm_for_each_display(state, drm) {
++		connector = state->conn_state.connector;
++		if (connector && connector->type == DRM_MODE_CONNECTOR_HDMIA)
++			break;
++	}
++
++	if (!state || !connector || connector->type != DRM_MODE_CONNECTOR_HDMIA) {
++		env_set("opi_hdmi_diag", "hdmi=connector-missing");
++		env_set("opi_hdmi_diag_ok", "false");
++		return 1;
++	}
++
++	hdmi = drm_connector_to_hdmi(connector);
++	if (IS_ERR_OR_NULL(hdmi)) {
++		env_set("opi_hdmi_diag", "hdmi=device-missing");
++		env_set("opi_hdmi_diag_ok", "false");
++		return 1;
++	}
++
++	pctl = &hdmi->hdmi_ctrl;
++	res = &hdmi->hdmi_res;
++	_sunxi_drv_hdmi_hpd_get(hdmi);
++
++	if (!IS_ERR_OR_NULL(res->clk_tcon_tv))
++		tcon_rate = clk_get_rate(res->clk_tcon_tv);
++	if (!IS_ERR_OR_NULL(res->clk_hdmi))
++		hdmi_rate = clk_get_rate(res->clk_hdmi);
++
++	dw = &hdmi->hdmi_core.dw_hdmi;
++	if (hdmi->hdmi_core.plat_data && hdmi->hdmi_core.plat_data->use_top_phy) {
++		top_lock = top_phy_pll_get_lock();
++		top_clk_sel = top_phy_get_clock_select();
++		top_pad_sel = top_phy_get_pad_select();
++		top_cfg = top_phy_read(0);
++		top_stat = top_phy_read(4);
++	}
++
++	snprintf(diag, sizeof(diag),
++		 "hdmi=fast%d,hpd%d,clk%d,out%d,drm%d,mode%d,tcon%lu,hdmi%lu,pix%u,tmds%u,toplock%d,topclk%d,toppad%d,top0_%08x,top10_%08x",
++		 pctl->dts_fast_output ? 1 : 0,
++		 pctl->drv_hpd_state ? 1 : 0,
++		 pctl->drv_clock ? 1 : 0,
++		 pctl->drv_enable ? 1 : 0,
++		 pctl->drm_enable ? 1 : 0,
++		 pctl->drm_mode_set ? 1 : 0,
++		 tcon_rate, hdmi_rate,
++		 dw ? dw->pixel_clk : 0,
++		 dw ? dw->tmds_clk : 0,
++		 top_lock, top_clk_sel, top_pad_sel, top_cfg, top_stat);
++	env_set("opi_hdmi_diag", diag);
++	env_set("opi_hdmi_diag_ok", "true");
++	return 0;
++}
++
+ static int sunxi_drm_hdmi_debug_cmd(struct cmd_tbl_s *cmdtp, int flag,
+-		int argc, char *const argv[])
++			int argc, char *const argv[])
+ {
+ 	int ret = CMD_RET_USAGE, bit = 0;
+ 	struct display_state *state = NULL;
+@@ -1250,6 +1330,12 @@ static char sunxi_drm_hdmi_help[] =
+ 	"\n     - arg2: write register value"
+ 	;
+ 
++U_BOOT_CMD(
++	sunxi_hdmi_env, 1, 1, do_sunxi_hdmi_env,
++	"export HDMI transmitter state to opi_hdmi_diag environment variable",
++	NULL
++);
++
+ U_BOOT_CMD(
+ 	sunxi_hdmi20, 4, 1, sunxi_drm_hdmi_debug_cmd,
+ 	"sunxi drm hdmi debug cmd",

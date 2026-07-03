@@ -286,6 +286,28 @@ Current HDMI-power candidate:
   the standard `1280x720@60` mode at 74.25 MHz. That exact clock exists in the
   U-Boot top PHY PLL table, and Linux reports `1280x720` as an available mode
   on the live HDMI connector.
+- Reboot result: Linux still reached `bootchooser=extlinux-legacy-nvme`, but
+  no bootloader output was visible before desktop.
+
+2026-07-03 custom bootmenu HDMI diagnostic 720p force-route package:
+
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-diag-fast720p-force-route.fex`
+- Package SHA-256:
+  `1549376b7ed488e358667dbb5ff7de0df09ee5e3efe41b4922fc2e6bd518d8a9`
+- U-Boot item SHA-256:
+  `1948c93eb50bd316c331cf98562f6dfdee2436cc26ecd4f07a1ef00b1e97c66c`
+- Source package:
+  `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex`
+- Build commands:
+  `APPLY_DISPLAY_MODE_PATCH=false scripts/build-vendor-uboot.sh --bootmenu --clean`
+  `scripts/prepare-vendor-sd-hdmi-power-package.sh --uboot .build/u-boot/artifacts/bootmenu/u-boot-sun60iw2p1.bin --hdmi-default-mode 1280x720 --force-route --vendor /usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex --output /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-diag-fast720p-force-route.fex`
+- This package adds `sunxi_hdmi_env`, which exports HDMI HPD, clock, output,
+  mode-set, pixel/TMDS clock, and top PHY lock/status data to `opi_hdmi_diag`.
+  The boot script appends those diagnostics to the legacy `bootm` kernel
+  command line during bounded visual tests. The package still applies the A733
+  HDMI power, CLDO2, `clk_tcon_tv`, `uhdmi_fast_output=1`, 720p fallback, and
+  force-route changes.
 
 Installed framebuffer-test package:
 

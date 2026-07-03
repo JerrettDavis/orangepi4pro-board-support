@@ -3,6 +3,7 @@ set -euo pipefail
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 vendor_package=${VENDOR_PACKAGE:-/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package.fex}
+uboot_override=${UBOOT:-}
 output=${OUTPUT:-/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_vendor-sd-scriptfirst-hdmi-power.fex}
 work_dir=$(mktemp -d)
 fast_1024x600=false
@@ -15,10 +16,12 @@ usage() {
 Prepare a vendor SD U-Boot package with script-first boot and corrected HDMI power.
 
 Usage:
-  scripts/prepare-vendor-sd-hdmi-power-package.sh [--vendor PACKAGE] [--output PACKAGE] [--fast-1024x600] [--hdmi-default-mode MODE] [--force-route]
+  scripts/prepare-vendor-sd-hdmi-power-package.sh [--vendor PACKAGE] [--uboot FILE] [--output PACKAGE] [--fast-1024x600] [--hdmi-default-mode MODE] [--force-route]
 
 This is file-only. It:
   - extracts the vendor U-Boot item from an Allwinner TOC1 package;
+  - or, when --uboot is given, uses that U-Boot item with the vendor package
+    only as the TOC1 monitor/SCP/template source;
   - patches distro boot scanning so boot.scr runs before extlinux;
   - patches the embedded U-Boot DTB so the HDMI driver sees the property names
     it actually reads: uhdmi_power_count, uhdmi_resistor_select, and
@@ -42,6 +45,10 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --vendor)
       vendor_package=${2:-}
+      shift
+      ;;
+    --uboot)
+      uboot_override=${2:-}
       shift
       ;;
     --output)
@@ -88,6 +95,10 @@ if [ ! -r "$vendor_package" ]; then
   printf 'ERROR: vendor package not readable: %s\n' "$vendor_package" >&2
   exit 1
 fi
+if [ -n "$uboot_override" ] && [ ! -r "$uboot_override" ]; then
+  printf 'ERROR: U-Boot override not readable: %s\n' "$uboot_override" >&2
+  exit 1
+fi
 
 for cmd in fdtget fdtput fdtdump; do
   command -v "$cmd" >/dev/null 2>&1 || {
@@ -96,7 +107,10 @@ for cmd in fdtget fdtput fdtdump; do
   }
 done
 
-python3 - "$repo_root" "$vendor_package" "$work_dir/u-boot-vendor.bin" <<'PY'
+if [ -n "$uboot_override" ]; then
+  cp "$uboot_override" "$work_dir/u-boot-vendor.bin"
+else
+  python3 - "$repo_root" "$vendor_package" "$work_dir/u-boot-vendor.bin" <<'PY'
 from pathlib import Path
 import importlib.util
 import sys
@@ -124,6 +138,7 @@ for item in package.items:
 else:
     raise SystemExit("vendor package does not contain a u-boot item")
 PY
+fi
 
 python3 - "$work_dir/u-boot-vendor.bin" "$work_dir/u-boot-scriptfirst.bin" <<'PY'
 from pathlib import Path
@@ -395,6 +410,9 @@ mkdir -p "$(dirname "$output")"
 printf '\nPatched embedded U-Boot DTB HDMI power:\n'
 printf '  dcdc2_phandle=%s\n' "$dcdc2_phandle"
 printf '  cldo2_phandle=%s\n' "$cldo2_phandle"
+if [ -n "$uboot_override" ]; then
+  printf '  uboot_override=%s\n' "$uboot_override"
+fi
 printf '  uhdmi_power_count=2\n'
 printf '  clk_tcon_tv=enabled\n'
 printf '  fast_output=%s\n' "$fast_1024x600"
