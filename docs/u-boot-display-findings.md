@@ -226,6 +226,10 @@ Current HDMI-power candidate:
   `69c6a93ff7c3ae65c7bf2003a246c269ac41cbbe1185af0f76e1211779a48192`
 - Source package:
   `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex`
+- Recovery backup:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260703T062446Z.bin`
+- Recovery backup SHA-256:
+  `d0325b8ea7a7c8a4574ac122044f9cd91be0bb8b6462ac6b1085852364d044b4`
 - Build command:
   `scripts/prepare-vendor-sd-hdmi-power-package.sh --fast-1024x600 --vendor /usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex --output /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-nvme-scriptfirst-hdmi-power-fast1024.fex`
 - This package keeps the A733 HDMI power, CLDO2, and `clk_tcon_tv` DTB fixes,
