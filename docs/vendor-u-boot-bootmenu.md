@@ -132,6 +132,20 @@ This variant adds `sunxi_drm_env`, which exports the vendor DRM connector,
 mode, framebuffer, and backlight state into `opi_drm_diag`. It is intended for
 boot-script diagnostics and does not draw graphics by itself.
 
+Build the cyberdeck-native HDMI fallback variant:
+
+```bash
+scripts/build-vendor-uboot.sh --selector-logo --clean
+scripts/prepare-sd-bootmenu-package.sh \
+  --uboot .build/u-boot/artifacts/bootmenu-selector-logo/u-boot-sun60iw2p1.bin \
+  --output /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-bootmenu-scriptfirst-selector-logo-drm-env-1024x600.fex
+```
+
+This keeps the same script-first bootmenu and diagnostics, but changes vendor
+U-Boot's no-EDID HDMI fallback from `1920x1080` to the panel's Linux-proven
+`1024x600` timing: 49.00 MHz, `1024 1029 1042 1312 600 602 605 622`,
+negative hsync, positive vsync.
+
 ## Menu Fragment
 
 `configs/u-boot/orangepi4pro-bootmenu.fragment` enables:
@@ -222,6 +236,23 @@ selector_bmp_sha256=bc3dcbd5a046168fe3b463b66da96cddafd84c0779c804f308b5d788c46b
 selector_bmp=file: PC bitmap, Windows 3.x format, 320 x 240 x 24, cbSize 230454
 backup=/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260703T010004Z.bin
 backup_sha256=74f1cffbafe1c14c5a6ff6e410a73b3b51bb08f678fb151c806d8ff781209bef
+```
+
+This package has been inspected, installed to `/dev/mmcblk1`, and verified by
+reading the package slot back from SD.
+
+The 2026-07-03 native-mode diagnostic candidate changes the vendor HDMI
+fallback to `1024x600` using the Linux/Xorg modeline and keeps the same
+script-first bootmenu, embedded selector logo, and `sunxi_drm_env` diagnostic:
+
+```text
+device=/dev/mmcblk1
+package=/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-bootmenu-scriptfirst-selector-logo-drm-env-1024x600.fex
+package_sha256=79034667cf71181c620568607fa085c7eb551a026a208992e2a310bc0d0f1647
+u_boot_item_sha256=ac4c20b765e56427e27cad48e069ebee34ad3ae7f9fbf6b71e67cc747ff2b12e
+selector_bmp_sha256=bc3dcbd5a046168fe3b463b66da96cddafd84c0779c804f308b5d788c46bcb03
+backup=/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260703T010829Z.bin
+backup_sha256=12ba9643679371de85327ca0a4019911a5190cb18def9832b07c30932c20c2cc
 ```
 
 This package has been inspected, installed to `/dev/mmcblk1`, and verified by

@@ -47,16 +47,20 @@ Current candidate:
   `sunxi_drm_env` diagnostic command.
 - The generated selector BMP is 320 x 240 x 24-bit and 230454 bytes, so it is
   comfortably below the vendor logo decompression buffer size.
+- Linux uses HDMI-A at `1024x600` with a 49.00 MHz pixel clock:
+  `1024 1029 1042 1312 600 602 605 622 -hsync +vsync`. The vendor U-Boot
+  fallback was `1920x1080` and produced no visible pre-kernel output on the
+  cyberdeck panel.
 - The installed SD boot-package test candidate is
-  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-bootmenu-scriptfirst-selector-logo-drm-env.fex`.
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-bootmenu-scriptfirst-selector-logo-drm-env-1024x600.fex`.
 - Candidate SHA-256:
-  `fd0222a54312c8c20c26f99509ec466ed1afd2fef34ca3f56071d2f4c97731e2`.
+  `79034667cf71181c620568607fa085c7eb551a026a208992e2a310bc0d0f1647`.
 - U-Boot item SHA-256:
-  `cca39d1ef71be8a3f94f719f6265a8813248c299a8546289078143e9cd0f4ed7`.
+  `ac4c20b765e56427e27cad48e069ebee34ad3ae7f9fbf6b71e67cc747ff2b12e`.
 - Recovery backup:
-  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260703T010004Z.bin`.
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260703T010829Z.bin`.
 - Recovery backup SHA-256:
-  `74f1cffbafe1c14c5a6ff6e410a73b3b51bb08f678fb151c806d8ff781209bef`.
+  `12ba9643679371de85327ca0a4019911a5190cb18def9832b07c30932c20c2cc`.
 
 This candidate is intended to prove whether vendor U-Boot has an active DRM
 connector and framebuffer before Linux starts. The paired boot script appends
