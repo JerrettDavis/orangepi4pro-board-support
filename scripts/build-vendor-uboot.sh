@@ -44,6 +44,7 @@ hdmi_stale_enable_retry_patch=${HDMI_STALE_ENABLE_RETRY_PATCH:-"$repo_root/confi
 hdmi_logo_recover_patch=${HDMI_LOGO_RECOVER_PATCH:-"$repo_root/configs/u-boot/0030-recover-stale-hdmi-before-logo.patch"}
 hdmi_post_logo_retry_patch=${HDMI_POST_LOGO_RETRY_PATCH:-"$repo_root/configs/u-boot/0031-retry-unlocked-hdmi-after-logo-enable.patch"}
 hdmi_relaxed_logo_retry_patch=${HDMI_RELAXED_LOGO_RETRY_PATCH:-"$repo_root/configs/u-boot/0032-relax-hdmi-logo-retry-and-report-skip.patch"}
+hdmi_force_logo_reinit_patch=${HDMI_FORCE_LOGO_REINIT_PATCH:-"$repo_root/configs/u-boot/0033-force-post-logo-hdmi-reinit.patch"}
 apply_drm_reinit_patch=${APPLY_DRM_REINIT_PATCH:-false}
 applied_display_mode_patch=false
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
@@ -296,6 +297,17 @@ if [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ]; t
       "$work_dir/drivers/video/drm/sunxi_drm_drv.c" \
       || {
         printf 'ERROR: HDMI relaxed logo retry patch did not apply cleanly\n' >&2
+        exit 1
+      }
+    if [ ! -r "$hdmi_force_logo_reinit_patch" ]; then
+      printf 'ERROR: HDMI force logo reinit patch not readable: %s\n' "$hdmi_force_logo_reinit_patch" >&2
+      exit 1
+    fi
+    git -C "$work_dir" apply --recount "$hdmi_force_logo_reinit_patch"
+    grep -q 'HDMI post-logo visible reinit' \
+      "$work_dir/drivers/video/drm/sunxi_drm_drv.c" \
+      || {
+        printf 'ERROR: HDMI force logo reinit patch did not apply cleanly\n' >&2
         exit 1
       }
     if [ ! -r "$hdmi_passive_top_phy_diag_patch" ]; then

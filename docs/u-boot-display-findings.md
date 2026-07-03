@@ -1104,6 +1104,36 @@ delivering a valid visible signal until Linux later performs its full
   `post-skip-locked`. The visual target remains a visible bootloader screen;
   the diagnostic target is to prove whether the retry is executing and whether
   HDMI lock changes before Linux starts.
+- Reboot result: Linux reached NVMe and `opi_logo_recover=post-skip-locked`
+  appeared. That means the immediate post-logo raw DW/SNPS lock read looked
+  successful, but the bootloader display was still invisible and the later
+  `sunxi_hdmi_env` diagnostic still read `phy00,stat00,rst00,lock00`. The next
+  package stops treating immediate lock as success and forces one post-logo
+  visible reinit.
+
+2026-07-03 forced post-logo HDMI visible reinit package:
+
+- Build command:
+  `scripts/build-vendor-uboot.sh --scriptfirst-diag-modeclock --clean`
+- Build artifact:
+  `.build/u-boot/artifacts/scriptfirst-diag-modeclock/u-boot-sun60iw2p1.bin`
+- Build artifact SHA-256:
+  `ca67510ad8e65130e29befbce2c0347e36fff1f8ecd6560bce3690f34d0e3087`
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-scriptfirst-diag-modeclock-force1024-hdmitvclk-topmc-forcereinit.fex`
+- Package SHA-256:
+  `dac4949d4e5ad3fdb8c3db0bf16811f2ce8ed4948c242ffeebe3c052d940f7a1`
+- U-Boot item SHA-256:
+  `ca67510ad8e65130e29befbce2c0347e36fff1f8ecd6560bce3690f34d0e3087`
+- Patch:
+  `configs/u-boot/0033-force-post-logo-hdmi-reinit.patch`
+- Change: after the normal logo draw/enable, U-Boot now performs one
+  forced `display_disable()`/`display_init()`/`display_enable()` sequence even
+  when the immediate DW/SNPS lock bits read as set. It records the existing
+  `opi_logo_recover=post-retry-...` value with before/after PHY/MC lock bytes.
+- Expected reboot evidence: `/proc/cmdline` should include
+  `opi_logo_recover=post-retry-...`; visual success would be the bootloader
+  splash/selector becoming visible before Linux starts.
 
 2026-07-03 forced cyberdeck-mode plus HDMI clock-only DTB package:
 
