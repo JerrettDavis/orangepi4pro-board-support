@@ -1011,11 +1011,36 @@ delivering a valid visible signal until Linux later performs its full
 - Expected reboot evidence: if the stale early-return was the blocker,
   `opi_logo_hdmi` should move away from `phy00,stat00,rst00,lock00` toward
   SNPS PHY lock before Linux starts.
-- Reboot result: Linux reached the NVMe root, but both diagnostics regressed to
-  `opi_logo_hdmi=diag-missing` and `opi_logo_drm=diag-missing`. The diagnostic
-  command strings still exist in the installed package, so the broader embedded
-  DTB patch likely changed display initialization enough that those commands
-  return failure. This package is not a useful diagnostic baseline.
+- Reboot result: Linux reached NVMe and retained U-Boot diagnostics, but the
+  bootloader display stayed black and `opi_logo_hdmi` still showed
+  `phy00,stat00,rst00,lock00`. The retry inside `_sunxi_drv_hdmi_enable()` was
+  not enough because the successful stock logo path can return early from
+  `display_enable()` when `state->is_enable` is already true.
+
+2026-07-03 stale HDMI logo-path reinit package:
+
+- Build command:
+  `scripts/build-vendor-uboot.sh --scriptfirst-diag-modeclock --clean`
+- Build artifact:
+  `.build/u-boot/artifacts/scriptfirst-diag-modeclock/u-boot-sun60iw2p1.bin`
+- Build artifact SHA-256:
+  `80f455d74201ac7209116b637851766532a4cfb516072894542c45bd1f38034a`
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-scriptfirst-diag-modeclock-force1024-hdmitvclk-topmc-logorecover.fex`
+- Package SHA-256:
+  `8e8926949c5453fd1590341a8489120a52bc2e52f3c35c9bf384994f8d928efd`
+- U-Boot item SHA-256:
+  `80f455d74201ac7209116b637851766532a4cfb516072894542c45bd1f38034a`
+- Scope: same stock-DTB TOP/MC/TV-clock candidate, plus
+  `configs/u-boot/0030-recover-stale-hdmi-before-logo.patch`. The patch checks
+  HDMI-A just before `display_logo()`. If the display state is initialized and
+  enabled but `PHY_STAT0` lacks TX lock or `MC_LOCKONCLOCK` lacks TMDS/pixel
+  lock, it records `opi_logo_recover`, calls `display_disable()`, calls
+  `display_init()`, then lets the normal logo path draw and enable.
+- Expected reboot evidence: `bootchooser=uboot-logo-preinit-ok` remains,
+  `/proc/cmdline` gains `opi_logo_recover=stale-reinit-...`, and if this is
+  the missing re-enable point, `opi_logo_hdmi` moves away from
+  `phy00,stat00,rst00,lock00` before Linux starts.
 
 2026-07-03 forced cyberdeck-mode plus HDMI clock-only DTB package:
 

@@ -41,6 +41,7 @@ hdmi_normal_tcon_format_patch=${HDMI_NORMAL_TCON_FORMAT_PATCH:-"$repo_root/confi
 force_cyberdeck_hdmi_mode_patch=${FORCE_CYBERDECK_HDMI_MODE_PATCH:-"$repo_root/configs/u-boot/0025-force-cyberdeck-hdmi-mode.patch"}
 hdmi_tv_clock_fallback_patch=${HDMI_TV_CLOCK_FALLBACK_PATCH:-"$repo_root/configs/u-boot/0026-program-hdmi-tv-clock-fallback.patch"}
 hdmi_stale_enable_retry_patch=${HDMI_STALE_ENABLE_RETRY_PATCH:-"$repo_root/configs/u-boot/0029-retry-stale-hdmi-enable-state.patch"}
+hdmi_logo_recover_patch=${HDMI_LOGO_RECOVER_PATCH:-"$repo_root/configs/u-boot/0030-recover-stale-hdmi-before-logo.patch"}
 apply_drm_reinit_patch=${APPLY_DRM_REINIT_PATCH:-false}
 applied_display_mode_patch=false
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
@@ -260,6 +261,17 @@ if [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ]; t
       "$work_dir/drivers/video/drm/sunxi_drm_hdmi.c" \
       || {
         printf 'ERROR: HDMI stale-enable retry patch did not apply cleanly\n' >&2
+        exit 1
+      }
+    if [ ! -r "$hdmi_logo_recover_patch" ]; then
+      printf 'ERROR: HDMI logo recovery patch not readable: %s\n' "$hdmi_logo_recover_patch" >&2
+      exit 1
+    fi
+    git -C "$work_dir" apply --recount "$hdmi_logo_recover_patch"
+    grep -q 'stale HDMI before logo' \
+      "$work_dir/drivers/video/drm/sunxi_drm_drv.c" \
+      || {
+        printf 'ERROR: HDMI logo recovery patch did not apply cleanly\n' >&2
         exit 1
       }
     if [ ! -r "$hdmi_passive_top_phy_diag_patch" ]; then
