@@ -450,3 +450,18 @@ selector defaults while the factory display path is retested.
   clear, plus the same `uboot-visual-hdmi20-pattern-ok` marker. If the monitor
   still has no pre-OS signal, continue from the new `top0`, `phy`, `stat`,
   `lock`, and pattern fields rather than changing selector/menu logic.
+
+2026-07-03 corrected top-PHY PDDQ package:
+
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-toppddq-applied-1024x600.fex`
+- Package SHA-256:
+  `ee6df304753d62319a499f148d9e56b8a5f065f27548672ccb955f9cd93fc2a7`
+- U-Boot item SHA-256:
+  `84dd435604682491007d61d73ca0c460301a75fdacb8ef6d66288d54051b18c3`
+- Raw built U-Boot SHA-256:
+  `d2677f55cc482bf18c96c9ef5690ba93882a5cd03e45d7ac856334c7ea750726`
+- Correction: the first top-PHY PDDQ package was built before `0013` was added
+  to `scripts/build-vendor-uboot.sh`, so the package still had
+  `phy_pddq = 0x1`. The build script now applies `0013` and fails if the
+  generated work tree does not contain `phy_pddq = 0x0` before compiling.

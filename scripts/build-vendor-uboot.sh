@@ -23,6 +23,7 @@ hdmi_diag_patch=${HDMI_DIAG_PATCH:-"$repo_root/configs/u-boot/0009-add-sunxi-hdm
 hdmi_mode_clock_patch=${HDMI_MODE_CLOCK_PATCH:-"$repo_root/configs/u-boot/0010-use-hdmi-mode-clock-when-tcon-rate-is-stale.patch"}
 hdmi_bus_clock_patch=${HDMI_BUS_CLOCK_PATCH:-"$repo_root/configs/u-boot/0011-enable-hdmi-bus-clock.patch"}
 hdmi_pattern_status_patch=${HDMI_PATTERN_STATUS_PATCH:-"$repo_root/configs/u-boot/0012-fix-hdmi-pattern-status-diag.patch"}
+hdmi_top_phy_pddq_patch=${HDMI_TOP_PHY_PDDQ_PATCH:-"$repo_root/configs/u-boot/0013-clear-top-phy-pddq-on-power-on.patch"}
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
 cross_compile=${CROSS_COMPILE:-arm-linux-gnueabi-}
 jobs=${JOBS:-$(nproc)}
@@ -202,6 +203,17 @@ if [ "$mode" = bootmenu ]; then
     exit 1
   fi
   git -C "$work_dir" apply --recount "$hdmi_pattern_status_patch"
+  if [ ! -r "$hdmi_top_phy_pddq_patch" ]; then
+    printf 'ERROR: HDMI top-PHY PDDQ patch not readable: %s\n' "$hdmi_top_phy_pddq_patch" >&2
+    exit 1
+  fi
+  git -C "$work_dir" apply --recount "$hdmi_top_phy_pddq_patch"
+  grep -q 'phy_pddq[[:space:]]*=[[:space:]]*0x0;' \
+    "$work_dir/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/phy_top.c" \
+    || {
+      printf 'ERROR: top-PHY PDDQ patch did not apply cleanly\n' >&2
+      exit 1
+    }
   if [ ! -r "$fragment" ]; then
     printf 'ERROR: config fragment not readable: %s\n' "$fragment" >&2
     exit 1
