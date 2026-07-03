@@ -627,3 +627,49 @@ for this A733 branch. Enabling it pulls in a legacy display stack that is not
 build-clean beside the current sun60iw2 AW DRM configuration. Keep this mode as
 a reproducible negative probe only; do not package or install it as a boot test
 candidate without source-level display-stack work.
+
+2026-07-03 factory-logo preinit control-flow result:
+
+- Installed package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_vendor-nvme-scriptfirst.fex`
+- Package SHA-256:
+  `d798104ccd705e542842fac409b1e2694c6ca19fcfac75fc30036a4535a7d318`
+- Boot script result after reboot:
+  `bootchooser=uboot-logo-preinit-ok bootchooser=boot-script-default-nvme`
+- The display stayed black until the Linux/Ubuntu splash, even though
+  `sunxi_show_logo` returned success.
+
+Conclusion: boot-script ordering and logo-file lookup are not the remaining
+blocker. The U-Boot DRM path believes it displayed a logo, but HDMI is not
+delivering a valid visible signal until Linux later performs its full
+1024x600 mode-change sequence.
+
+2026-07-03 HDMI TCON clock-sequence candidate:
+
+- Patch:
+  `configs/u-boot/0018-use-linux-like-hdmi-tcon-clock-sequence.patch`
+- Rationale: Linux's working HDMI enable path disables the TCON pixel and bus
+  clocks, pulses the TCON reset, sets the 49 MHz pixel clock, then enables bus
+  and pixel clocks. The U-Boot BSP was setting the HDMI TCON rate on top of the
+  previous state. This can explain why framebuffer/logo calls report success
+  while the monitor reports no pre-Linux signal.
+- Build artifact:
+  `.build/u-boot/artifacts/bootmenu/u-boot-sun60iw2p1.bin`
+- Build artifact SHA-256:
+  `da53f596d657e984dc9e190499641f14dece4fa91887c170997dcf89bb2ce60b`
+- Build source:
+  Orange Pi U-Boot `v2018.05-sun60iw2`
+  `b791be842935b27268ae3d00e943a9075495f30a`
+- Safety change: `scripts/build-vendor-uboot.sh` now leaves the known-unsafe
+  `0017` full DRM reinit diagnostic disabled unless
+  `APPLY_DRM_REINIT_PATCH=true` is explicitly set.
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-tconseq-1024x600.fex`
+- Package SHA-256:
+  `18ed3b2a21c7c5a4563d21b426a2b0b34a972312c2bb0d1394ddfee74e199d49`
+- U-Boot item SHA-256:
+  `5cc7a6837af0f3ced7a554c9d5704bbdee056f3efa2af7b43a0dcedbf8d3df18`
+- The package preserves vendor monitor/SCP, uses the A733 NVMe vendor package
+  wrapper, keeps script-first scan order, applies existing HDMI power/CLDO2,
+  `clk_tcon_tv`, 1024x600, and forced-route DTB corrections, and does not
+  include the unsafe `sunxi_drm reinit` command.

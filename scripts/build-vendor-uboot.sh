@@ -29,6 +29,8 @@ hdmi_pattern_reconfig_patch=${HDMI_PATTERN_RECONFIG_PATCH:-"$repo_root/configs/u
 hdmi_pattern_full_reinit_patch=${HDMI_PATTERN_FULL_REINIT_PATCH:-"$repo_root/configs/u-boot/0015-full-hdmi-reinit-before-pattern-test.patch"}
 hdmi_reinit_stage_diag_patch=${HDMI_REINIT_STAGE_DIAG_PATCH:-"$repo_root/configs/u-boot/0016-add-hdmi-reinit-stage-diagnostics.patch"}
 drm_reinit_visual_diag_patch=${DRM_REINIT_VISUAL_DIAG_PATCH:-"$repo_root/configs/u-boot/0017-add-drm-reinit-visual-diagnostic.patch"}
+tcon_hdmi_clock_sequence_patch=${TCON_HDMI_CLOCK_SEQUENCE_PATCH:-"$repo_root/configs/u-boot/0018-use-linux-like-hdmi-tcon-clock-sequence.patch"}
+apply_drm_reinit_patch=${APPLY_DRM_REINIT_PATCH:-false}
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
 cross_compile=${CROSS_COMPILE:-arm-linux-gnueabi-}
 jobs=${JOBS:-$(nproc)}
@@ -51,6 +53,10 @@ Environment overrides:
   DTC              Device tree compiler. Default: /usr/bin/dtc
   JOBS             make -j value. Default: nproc
   BOOTGUI_FRAGMENT Kconfig fragment for vendor BOOT_GUI display testing.
+  APPLY_DRM_REINIT_PATCH
+                   Apply the unsafe 0017 full DRM reinit diagnostic. Default:
+                   false. Requires explicit opt-in because one package using
+                   this path failed to boot and required external recovery.
   SELECTOR_LOGO_GENERATOR
                    Generator for embedded boot_bmp.h selector image.
 
@@ -256,17 +262,30 @@ if [ "$mode" = bootmenu ]; then
       printf 'ERROR: HDMI reinit stage diagnostics patch did not apply cleanly\n' >&2
       exit 1
     }
-  if [ ! -r "$drm_reinit_visual_diag_patch" ]; then
-    printf 'ERROR: DRM reinit visual diagnostics patch not readable: %s\n' "$drm_reinit_visual_diag_patch" >&2
+  if [ ! -r "$tcon_hdmi_clock_sequence_patch" ]; then
+    printf 'ERROR: HDMI TCON clock sequence patch not readable: %s\n' "$tcon_hdmi_clock_sequence_patch" >&2
     exit 1
   fi
-  git -C "$work_dir" apply --recount "$drm_reinit_visual_diag_patch"
-  grep -q 'sunxi_drm_reinit_active' \
-    "$work_dir/drivers/video/drm/sunxi_drm_drv.c" \
+  git -C "$work_dir" apply --recount "$tcon_hdmi_clock_sequence_patch"
+  grep -q 'Linux.s sun60iw2 HDMI path fully drops the TCON' \
+    "$work_dir/drivers/video/drm/sunxi_device/sunxi_tcon.c" \
     || {
-      printf 'ERROR: DRM reinit visual diagnostics patch did not apply cleanly\n' >&2
+      printf 'ERROR: HDMI TCON clock sequence patch did not apply cleanly\n' >&2
       exit 1
     }
+  if [ "$apply_drm_reinit_patch" = true ]; then
+    if [ ! -r "$drm_reinit_visual_diag_patch" ]; then
+      printf 'ERROR: DRM reinit visual diagnostics patch not readable: %s\n' "$drm_reinit_visual_diag_patch" >&2
+      exit 1
+    fi
+    git -C "$work_dir" apply --recount "$drm_reinit_visual_diag_patch"
+    grep -q 'sunxi_drm_reinit_active' \
+      "$work_dir/drivers/video/drm/sunxi_drm_drv.c" \
+      || {
+        printf 'ERROR: DRM reinit visual diagnostics patch did not apply cleanly\n' >&2
+        exit 1
+      }
+  fi
   if [ ! -r "$fragment" ]; then
     printf 'ERROR: config fragment not readable: %s\n' "$fragment" >&2
     exit 1
@@ -334,6 +353,7 @@ defconfig=$defconfig
 mode=$mode
 selector_logo=$selector_logo
 apply_display_mode_patch=$apply_display_mode_patch
+apply_drm_reinit_patch=$apply_drm_reinit_patch
 bootgui_fragment=$bootgui_fragment
 cross_compile=$cross_compile
 dtc=${DTC:-/usr/bin/dtc}
