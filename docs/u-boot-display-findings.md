@@ -145,6 +145,30 @@ Current HDMI-power candidate:
   seconds, boots NVMe through the legacy `bootm` path, and appends
   `bootchooser=uboot-visual-fbtest-*` plus `opi_pre_*`, `opi_fb_*`, and
   `opi_post_*` diagnostics to `/proc/cmdline`.
+- The first reboot with this package produced
+  `bootchooser=uboot-visual-fbtest-ok` and
+  `opi_fb_fbtest=ok,w=1024,h=600,addr=b3dfd000,size=2457600`, but the display
+  still showed no bootloader image. That proved U-Boot could initialize HDMI-A
+  and write the framebuffer memory; it did not prove that the painted
+  framebuffer was bound to the active display plane.
+
+2026-07-03 plane-commit diagnostic package:
+
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-fbtest-planecommit-hdmi-power.fex`
+- Package SHA-256:
+  `19f2f5fb2874f9c836963921cf63fa66be652948f2fdbdb87ccf938dd8696c85`
+- U-Boot item SHA-256:
+  `2b228ee3ce7d9e62b908c1c12b36a5ebd973f7425285a6974f575600fb7a2f06`
+- Recovery backup:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260703T052915Z.bin`
+- Recovery backup SHA-256:
+  `47dc28d4227b5d0e9ff6234409e750bc95dfe03ba0930a8e21d3c6a3e3ed7dad`
+- This package changes `sunxi_drm fbtest` to select the display state, paint
+  that state's framebuffer, call `display_set_plane(state)`, flush the CRTC,
+  and re-enable backlight. The diagnostic string now includes `fbid`, `plane`,
+  and `en` fields, for example `fbid=0,plane=0,en=1` when the primary plane
+  commit succeeds.
 
 Installed framebuffer-test package:
 

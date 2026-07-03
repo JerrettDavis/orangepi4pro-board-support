@@ -7,7 +7,13 @@ diff --git a/drivers/video/drm/sunxi_drm_drv.c b/drivers/video/drm/sunxi_drm_drv
  
 +static int sunxi_drm_fbtest(void)
 +{
++	struct sunxi_drm_device *drm = sunxi_drm_device_get();
++	struct display_state *state = NULL;
++	struct display_state *candidate = NULL;
 +	struct drm_framebuffer *fb;
++	struct crtc_state *crtc_state;
++	const struct sunxi_drm_crtc *crtc;
++	const struct sunxi_drm_crtc_funcs *crtc_funcs;
 +	u32 *pixels;
 +	u32 colors[] = {
 +		0xffff0000,
@@ -20,11 +26,46 @@ diff --git a/drivers/video/drm/sunxi_drm_drv.c b/drivers/video/drm/sunxi_drm_drv
 +		0xff404040,
 +	};
 +	u32 x, y, stripe, color;
-+	char diag[128];
++	int ret = -ENODEV;
++	int plane_ret = -ENODEV;
++	char diag[192];
 +
-+	fb = drm_fb_lock();
++	if (!drm || list_empty(&drm->display_list)) {
++		env_set("opi_fbtest_diag", "fbtest=drm-missing");
++		return -ENODEV;
++	}
++
++	sunxi_drm_for_each_display(state, drm) {
++		if (!candidate)
++			candidate = state;
++		if (state->is_enable) {
++			candidate = state;
++			break;
++		}
++	}
++
++	state = candidate;
++	if (!state) {
++		env_set("opi_fbtest_diag", "fbtest=state-missing");
++		return -ENODEV;
++	}
++
++	ret = display_check(state);
++	if (ret) {
++		env_set("opi_fbtest_diag", "fbtest=check-fail");
++		return ret;
++	}
++
++	state->backlight = true;
++	ret = display_enable(state);
++	if (ret) {
++		env_set("opi_fbtest_diag", "fbtest=enable-fail");
++		return ret;
++	}
++
++	fb = drm_framebuffer_lookup(drm, state->fb_id);
 +	if (!fb || !fb->dma_addr || !fb->width || !fb->height) {
-+		env_set("opi_fbtest_diag", "fbtest=missing");
++		env_set("opi_fbtest_diag", "fbtest=fb-missing");
 +		return -ENODEV;
 +	}
 +
@@ -50,11 +91,21 @@ diff --git a/drivers/video/drm/sunxi_drm_drv.c b/drivers/video/drm/sunxi_drm_drv
 +			   ALIGN((ulong)(fb->dma_addr + fb->buf_size),
 +				 CONFIG_SYS_CACHELINE_SIZE));
 +
-+	snprintf(diag, sizeof(diag), "fbtest=ok,w=%u,h=%u,addr=%lx,size=%u",
-+		 fb->width, fb->height, (ulong)fb->dma_addr, fb->buf_size);
++	plane_ret = display_set_plane(state);
++	crtc_state = &state->crtc_state;
++	crtc = crtc_state->crtc;
++	crtc_funcs = crtc ? crtc->funcs : NULL;
++	if (crtc_funcs && crtc_funcs->flush)
++		crtc_funcs->flush(state);
++	sunxi_drm_connector_backlight(state, true);
++
++	snprintf(diag, sizeof(diag),
++		 "fbtest=ok,w=%u,h=%u,addr=%lx,size=%u,fbid=%d,plane=%d,en=%d",
++		 fb->width, fb->height, (ulong)fb->dma_addr, fb->buf_size,
++		 state->fb_id, plane_ret, state->is_enable ? 1 : 0);
 +	env_set("opi_fbtest_diag", diag);
 +
-+	return 0;
++	return plane_ret ? plane_ret : 0;
 +}
 +
  static int do_sunxi_sunxi_drm(struct cmd_tbl_s *cmdtp, int flag, int argc,

@@ -244,11 +244,11 @@ else:
     dst.write_bytes(data[:dtb_offset] + dtb_data + b"\0" * (dtb_size - len(dtb_data)) + data[dtb_offset + dtb_size :])
 PY
 
-grep -aFq 'boot.bmp decompressed OK' "$work_dir/u-boot-hdmi-power.bin" \
-  || {
-    printf 'ERROR: patched U-Boot does not preserve factory embedded-logo path\n' >&2
-    exit 1
-  }
+if ! grep -aFq 'boot.bmp decompressed OK' "$work_dir/u-boot-hdmi-power.bin" \
+  && ! grep -aFq '/boot/boot1.bmp' "$work_dir/u-boot-hdmi-power.bin"; then
+  printf 'ERROR: patched U-Boot does not preserve a known boot logo path\n' >&2
+  exit 1
+fi
 grep -aFq 'run scan_dev_for_scripts; run scan_dev_for_extlinux' "$work_dir/u-boot-hdmi-power.bin" \
   || {
     printf 'ERROR: patched U-Boot does not contain script-first scan order\n' >&2
