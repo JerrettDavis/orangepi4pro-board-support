@@ -1,0 +1,37 @@
+diff --git a/drivers/video/drm/sunxi_drm_hdmi.c b/drivers/video/drm/sunxi_drm_hdmi.c
+index ac0d393..7bdad7b 100644
+--- a/drivers/video/drm/sunxi_drm_hdmi.c
++++ b/drivers/video/drm/sunxi_drm_hdmi.c
+@@ -22,6 +22,8 @@
+ #include "sunxi_drm_helper_funcs.h"
+ #include "sunxi_drm_crtc.h"
+ #include "sunxi_device/hardware/lowlevel_hdmi20/phy_top.h"
++#include "sunxi_device/hardware/lowlevel_hdmi20/dw_dev.h"
++#include "sunxi_device/hardware/lowlevel_hdmi20/dw_fc.h"
+ 
+ 
+ #define SUNXI_HDMI_EDID_LENGTH		(1024)
+@@ -622,6 +624,7 @@ ssize_t _sunxi_hdmi_sysfs_pattern_store(struct udevice *dev, int bit)
+ {
+ 	struct sunxi_drm_hdmi *hdmi = dev_get_priv(dev);
++	char diag[96];
+ 
+ 	switch (bit) {
+ 	case 1:
+@@ -640,7 +643,15 @@ ssize_t _sunxi_hdmi_sysfs_pattern_store(struct udevice *dev, int bit)
+ 		break;
+ 	}
+ 
+-	return 1;
++	snprintf(diag, sizeof(diag),
++		 "hdmipat=req%d,tcon%d,force%02x,r%02x,g%02x,b%02x",
++		 bit,
++		 hdmi && hdmi->tcon_dev ? sunxi_tcon_pattern_get(hdmi->tcon_dev) : -1,
++		 (u8)dw_read(FC_DBGFORCE), (u8)dw_read(FC_DBGTMDS2),
++		 (u8)dw_read(FC_DBGTMDS1), (u8)dw_read(FC_DBGTMDS0));
++	env_set("opi_hdmi_pattern_diag", diag);
++
++	return 0;
+ }
+ 
+ static ssize_t _sunxi_hdmi_sysfs_hdmi_source_show(struct udevice *dev)

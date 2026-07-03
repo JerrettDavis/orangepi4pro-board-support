@@ -22,6 +22,7 @@ high_contrast_selector_patch=${HIGH_CONTRAST_SELECTOR_PATCH:-"$repo_root/configs
 hdmi_diag_patch=${HDMI_DIAG_PATCH:-"$repo_root/configs/u-boot/0009-add-sunxi-hdmi-env-diag.patch"}
 hdmi_mode_clock_patch=${HDMI_MODE_CLOCK_PATCH:-"$repo_root/configs/u-boot/0010-use-hdmi-mode-clock-when-tcon-rate-is-stale.patch"}
 hdmi_bus_clock_patch=${HDMI_BUS_CLOCK_PATCH:-"$repo_root/configs/u-boot/0011-enable-hdmi-bus-clock.patch"}
+hdmi_pattern_status_patch=${HDMI_PATTERN_STATUS_PATCH:-"$repo_root/configs/u-boot/0012-fix-hdmi-pattern-status-diag.patch"}
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
 cross_compile=${CROSS_COMPILE:-arm-linux-gnueabi-}
 jobs=${JOBS:-$(nproc)}
@@ -196,6 +197,11 @@ if [ "$mode" = bootmenu ]; then
     exit 1
   fi
   git -C "$work_dir" apply --recount "$hdmi_bus_clock_patch"
+  if [ ! -r "$hdmi_pattern_status_patch" ]; then
+    printf 'ERROR: HDMI pattern status patch not readable: %s\n' "$hdmi_pattern_status_patch" >&2
+    exit 1
+  fi
+  git -C "$work_dir" apply --recount "$hdmi_pattern_status_patch"
   if [ ! -r "$fragment" ]; then
     printf 'ERROR: config fragment not readable: %s\n' "$fragment" >&2
     exit 1
