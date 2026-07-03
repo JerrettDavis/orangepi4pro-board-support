@@ -22,7 +22,7 @@ index 4aa2b4f9ee..e2a30bc6c5 100644
 +
 +	memset(&draw, 0, sizeof(draw));
 +	draw.drm_fb = fb;
-+	draw.fb = map_sysmem(fb->dma_addr, fb->buf_size);
++	draw.fb = (void *)fb->dma_addr;
 +	draw.flush_addr = fb->dma_addr;
 +	draw.flush_size = fb->buf_size;
 +	draw.width = fb->width;
@@ -41,7 +41,7 @@ index 4aa2b4f9ee..e2a30bc6c5 100644
 +	char diag[96];
 +
 +	if (drm_fb_for_each_enabled(opi_draw_one_drm_fb, &ctx) >= 0 && ctx.rendered) {
-+		snprintf(diag, sizeof(diag), "opibootselect=drm_r%d_%dx%d",
++		snprintf(diag, sizeof(diag), "opibootselect=drm_direct_r%d_%dx%d",
 +			 ctx.rendered, fallback->width, fallback->height);
 +		env_set("opi_bootselect_diag", diag);
 +		return;

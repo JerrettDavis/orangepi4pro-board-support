@@ -190,7 +190,7 @@ index 0000000000..4aa2b4f9ee
 +	draw->drm_fb = drm_fb_lock();
 +	if (draw->drm_fb && draw->drm_fb->dma_addr && draw->drm_fb->width &&
 +	    draw->drm_fb->height && draw->drm_fb->pitches[0]) {
-+		draw->fb = map_sysmem(draw->drm_fb->dma_addr, draw->drm_fb->buf_size);
++		draw->fb = (void *)draw->drm_fb->dma_addr;
 +		draw->flush_addr = draw->drm_fb->dma_addr;
 +		draw->flush_size = draw->drm_fb->buf_size;
 +		draw->width = draw->drm_fb->width;
@@ -226,9 +226,7 @@ index 0000000000..4aa2b4f9ee
 +static void opi_video_flush(struct opi_draw *draw)
 +{
 +	if (draw->drm_fb) {
-+		flush_dcache_range(draw->flush_addr,
-+				   ALIGN(draw->flush_addr + draw->flush_size,
-+					 CONFIG_SYS_CACHELINE_SIZE));
++		flush_cache(draw->flush_addr, draw->flush_size);
 +		return;
 +	}
 +	if (draw->dev)
