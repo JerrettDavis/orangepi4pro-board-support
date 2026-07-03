@@ -491,3 +491,35 @@ selector defaults while the factory display path is retested.
   signal, compare `opi_pre_hdmi`, `opi_pat_hdmi`, and `opi_post_hdmi` to see
   whether the forced reconfigure changed `phy`, `stat`, `rst`, `lock`, `vid`,
   or `gcp` from zero.
+
+2026-07-03 stock-SD factory display retest:
+
+- Upstream U-Boot source reference:
+  `https://github.com/orangepi-xunlong/u-boot-orangepi`, branch `v2020.04`,
+  commit `c97dbbcad55f5a1e40c28b1a9874b2e0b9f163c9`.
+- Related NVMe DT research reference:
+  `https://github.com/CarterPerez-dev/orangepi-4-pro-nvme-fix`, branch `main`,
+  commit `fe4c31ec0115d3f2493905be07426f36f666aab5`. This is useful for A733
+  NVMe/PCIe context, but it does not address U-Boot display.
+- Installed package for the next test:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_vendor-sd-scriptfirst.fex`
+- Package SHA-256:
+  `77ef94aee8f8a6ec27d130822b70187fbf4316773d7ae5d59150e9027c654670`
+- U-Boot item SHA-256:
+  `94e5aa1cdebde42ce773f8d476fe78891cc61ad7e9e839d2554d738a549d55f5`
+- Source stock SD package:
+  `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package.fex`
+- Source stock SD package SHA-256:
+  `7a2661b080f5c5d8ba32566bc79f1ccfbfb8912a4a5c0c1a4856a9380542c807`
+- Source stock SD U-Boot item SHA-256:
+  `4d21321fba32d30b1dcc398c5850861db8f8dba213770e690ed6b51aae534533`
+- Rationale: the custom HDMI diagnostic U-Boot proves `boot.scr` runs and the
+  top PHY is powered, but the DesignWare HDMI core stays idle until Linux. The
+  factory image's "initializing boot loader" display is known to work, so the
+  next test returns to the stock SD U-Boot display/logo implementation and
+  changes only the length-preserving distro scan order so `boot.scr` can run
+  before extlinux.
+- Staged behavior: `boot.scr` calls stock `sunxi_show_logo`, holds for 8
+  seconds, enables `serial,vidconsole`, then enters prompted extlinux with
+  NVMe as the default. Expected Linux marker after timeout/default selection is
+  `bootchooser=extlinux-legacy-nvme`.
