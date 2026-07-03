@@ -796,3 +796,32 @@ delivering a valid visible signal until Linux later performs its full
   wrapper, keeps script-first scan order, applies existing HDMI power/CLDO2,
   `clk_tcon_tv`, 1024x600, and forced-route DTB corrections, and does not
   include the unsafe `sunxi_drm reinit` command.
+
+2026-07-03 standard U-Boot BMP-display result:
+
+- Installed package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_vendor-nvme-scriptfirst.fex`
+- Package SHA-256:
+  `d798104ccd705e542842fac409b1e2694c6ca19fcfac75fc30036a4535a7d318`
+- The staged boot script loaded a plain white `800x480` BMP and called standard
+  U-Boot `bmp display ${load_addr}`. It then forced the known-good legacy NVMe
+  `bootm` path so the diagnostic marker would survive.
+- Reboot result: Linux reached `bootchooser=uboot-bmp-display-ok`, but no
+  pre-OS image was visible before the Orange Pi OS splash. This proves the
+  boot script ran and U-Boot's BMP command returned success; it does not prove
+  HDMI scanout was active.
+
+2026-07-03 staged stock-logo preinit diagnostic:
+
+- The installed vendor-scriptfirst package still contains the upstream Orange
+  Pi NVMe logo fallback strings: `sunxi_show_logo`, `boot.bmp decompressed OK`,
+  and `NVMe detected ==> using embedded boot.bmp array`.
+- The next boot test returns to the stock `sunxi_show_logo` command rather
+  than `bmp display` or custom DRM reinit commands. The staged environment
+  uses `selector_logo_preinit=true`, `selector_logo_hold=10`,
+  `selector_bitmap=false`, and `selector_diag_force_bootm=true`.
+- Expected marker after reboot:
+  `bootchooser=uboot-logo-preinit-ok` or
+  `bootchooser=uboot-logo-preinit-fail`.
+- Safety: this test writes only `/boot`, `/boot/efi`, and the mounted SD
+  `/boot` copy. It does not reinstall U-Boot or write bootloader sectors.
