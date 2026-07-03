@@ -36,6 +36,7 @@ hdmi_top_phy_autocal_patch=${HDMI_TOP_PHY_AUTOCAL_PATCH:-"$repo_root/configs/u-b
 hdmi_top_phy_diag_patch=${HDMI_TOP_PHY_DIAG_PATCH:-"$repo_root/configs/u-boot/0022-add-top-phy-pll-env-diag.patch"}
 hdmi_mc_clock_patch=${HDMI_MC_CLOCK_PATCH:-"$repo_root/configs/u-boot/0023-sync-linux-hdmi-mc-clock-enable.patch"}
 hdmi_tcon_format_patch=${HDMI_TCON_FORMAT_PATCH:-"$repo_root/configs/u-boot/0024-pass-hdmi-format-to-tcon-reinit.patch"}
+force_cyberdeck_hdmi_mode_patch=${FORCE_CYBERDECK_HDMI_MODE_PATCH:-"$repo_root/configs/u-boot/0025-force-cyberdeck-hdmi-mode.patch"}
 apply_drm_reinit_patch=${APPLY_DRM_REINIT_PATCH:-false}
 applied_display_mode_patch=false
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
@@ -47,7 +48,7 @@ usage() {
   cat <<'USAGE'
 Build the Orange Pi vendor U-Boot tree for sun60iw2 without flashing anything.
 
-Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu|--scriptfirst-logo|--scriptfirst-diag|--bootgui-scriptfirst] [--selector-logo] [--clean]
+Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu|--scriptfirst-logo|--scriptfirst-diag|--scriptfirst-diag-modeclock|--bootgui-scriptfirst] [--selector-logo] [--clean]
 
 Environment overrides:
   SOURCE_DIR       Existing local vendor tree. Default:
@@ -89,6 +90,9 @@ while [ "$#" -gt 0 ]; do
       ;;
     --scriptfirst-diag)
       mode=scriptfirst-diag
+      ;;
+    --scriptfirst-diag-modeclock)
+      mode=scriptfirst-diag-modeclock
       ;;
     --bootgui-scriptfirst)
       mode=bootgui-scriptfirst
@@ -162,7 +166,7 @@ mkdir -p "$artifact_dir/lichee-chip/orangepi4pro/bin" "$artifact_dir/lichee-plat
 
 make "${make_common[@]}" "$defconfig"
 
-if [ "$mode" = bootmenu ] || [ "$mode" = scriptfirst-logo ] || [ "$mode" = scriptfirst-diag ] || [ "$mode" = bootgui-scriptfirst ]; then
+if [ "$mode" = bootmenu ] || [ "$mode" = scriptfirst-logo ] || [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ] || [ "$mode" = bootgui-scriptfirst ]; then
   if [ ! -r "$bootmenu_patch" ]; then
     printf 'ERROR: bootmenu source patch not readable: %s\n' "$bootmenu_patch" >&2
     exit 1
@@ -170,7 +174,7 @@ if [ "$mode" = bootmenu ] || [ "$mode" = scriptfirst-logo ] || [ "$mode" = scrip
   git -C "$work_dir" apply "$bootmenu_patch"
 fi
 
-if [ "$mode" = scriptfirst-diag ]; then
+if [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ]; then
   if [ ! -r "$display_diag_patch" ]; then
     printf 'ERROR: display diagnostic patch not readable: %s\n' "$display_diag_patch" >&2
     exit 1
@@ -181,6 +185,36 @@ if [ "$mode" = scriptfirst-diag ]; then
     exit 1
   fi
   git -C "$work_dir" apply --recount "$hdmi_diag_patch"
+  if [ "$mode" = scriptfirst-diag-modeclock ]; then
+    if [ ! -r "$display_mode_patch" ]; then
+      printf 'ERROR: display mode patch not readable: %s\n' "$display_mode_patch" >&2
+      exit 1
+    fi
+    git -C "$work_dir" apply "$display_mode_patch"
+    applied_display_mode_patch=true
+    if [ ! -r "$force_cyberdeck_hdmi_mode_patch" ]; then
+      printf 'ERROR: force cyberdeck HDMI mode patch not readable: %s\n' "$force_cyberdeck_hdmi_mode_patch" >&2
+      exit 1
+    fi
+    git -C "$work_dir" apply --recount "$force_cyberdeck_hdmi_mode_patch"
+    grep -q 'drm hdmi force cyberdeck mode' \
+      "$work_dir/drivers/video/drm/sunxi_drm_hdmi.c" \
+      || {
+        printf 'ERROR: force cyberdeck HDMI mode patch did not apply cleanly\n' >&2
+        exit 1
+      }
+    if [ ! -r "$hdmi_mode_clock_patch" ]; then
+      printf 'ERROR: HDMI mode clock patch not readable: %s\n' "$hdmi_mode_clock_patch" >&2
+      exit 1
+    fi
+    git -C "$work_dir" apply --recount "$hdmi_mode_clock_patch"
+    grep -q 'mode_rate && (clk_rate == 0 || clk_rate == 24000000)' \
+      "$work_dir/drivers/video/drm/sunxi_drm_hdmi.c" \
+      || {
+        printf 'ERROR: HDMI mode clock patch did not apply cleanly\n' >&2
+        exit 1
+      }
+  fi
   grep -q 'sunxi_hdmi_env' \
     "$work_dir/drivers/video/drm/sunxi_drm_hdmi.c" \
     || {

@@ -1,0 +1,22 @@
+diff --git a/drivers/video/drm/sunxi_drm_hdmi.c b/drivers/video/drm/sunxi_drm_hdmi.c
+--- a/drivers/video/drm/sunxi_drm_hdmi.c
++++ b/drivers/video/drm/sunxi_drm_hdmi.c
+@@ -877,14 +877,9 @@ int _sunxi_drm_hdmi_get_modes(struct sunxi_drm_connector *conn,
+ 		hdmi_trace("drm hdmi get mode num: %d\n", mode_num);
+ 	}
+ 
+-	if (mode_num == 0) {
+-		memcpy(sel_mode, &_sunxi_hdmi_default_modes[0],
+-				sizeof(struct drm_display_mode));
+-		hdmi_trace("drm hdmi use default mode\n");
+-		goto exit;
+-	}
+-
+-	list_for_each_entry(mode, &conn->probed_modes, head) {
++	memcpy(sel_mode, &_sunxi_hdmi_default_modes[0],
++			sizeof(struct drm_display_mode));
++	hdmi_trace("drm hdmi force cyberdeck mode\n");
++	if (0) list_for_each_entry(mode, &conn->probed_modes, head) {
+ 		if (mode->type & DRM_MODE_TYPE_PREFERRED) {
+ 			memcpy(sel_mode, mode, sizeof(struct drm_display_mode));
+ 			break;

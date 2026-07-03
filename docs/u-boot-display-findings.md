@@ -854,3 +854,40 @@ delivering a valid visible signal until Linux later performs its full
   `selector_diag_force_bootm=true`. The expected command line after reboot is
   `bootchooser=uboot-logo-preinit-ok` plus `opi_logo_hdmi=...` and
   `opi_logo_drm=...` diagnostics captured after `sunxi_show_logo`.
+
+2026-07-03 passive diagnostic reboot result:
+
+- Reboot reached the NVMe Ubuntu root with `bootchooser=uboot-logo-preinit-ok`.
+  The user still saw no bootloader image before the OS splash.
+- Captured HDMI diagnostic:
+  `fast0,hpd1,clk1,out1,drm1,mode1,tcon0,hdmi24000000,pix148500,tmds148500,toplock1,topclk0,toppad0,top0_00000017,top10_00000033,phy00,stat00,rst00,lock00,vid00,gcp00`.
+- Captured DRM diagnostic:
+  `n1,type=11,conn=hdmi-a,init=1,en=1,bl=1,mode=1920x1080,clk=148500,crtc=0,tcon=4,top=0,fb=0,fbw=1920,fbh=1080,force=0`.
+- Interpretation: U-Boot reported HDMI/DRM enabled but selected
+  `1920x1080` at a stale `24 MHz` HDMI clock, while Linux later reinitialized
+  the display to the visible `1024x600` path. The next candidate therefore
+  forces U-Boot's HDMI mode choice to the cyberdeck timing and sets `clk_hdmi`
+  from the selected mode when the TCON clock is stale.
+
+2026-07-03 script-first mode/clock forced diagnostic package:
+
+- Build command:
+  `scripts/build-vendor-uboot.sh --scriptfirst-diag-modeclock --clean`
+- Build source:
+  Orange Pi U-Boot `v2018.05-sun60iw2`
+  `b791be842935b27268ae3d00e943a9075495f30a`
+- Build artifact:
+  `.build/u-boot/artifacts/scriptfirst-diag-modeclock/u-boot-sun60iw2p1.bin`
+- Build artifact SHA-256:
+  `f56647ab3a8e1fa464e6fcf8d5731ef76c4b2ca4b5bd838ee75cc93318c65419`
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-scriptfirst-diag-modeclock-force1024.fex`
+- Package SHA-256:
+  `be973352edaf182a456dc3618a91c17b12df4ba54ec4d0d8e8aa91aed8c48516`
+- Scope: script-first scan order, passive `sunxi_drm_env` and
+  `sunxi_hdmi_env`, forced U-Boot HDMI mode selection to `1024x600@49 MHz`,
+  and HDMI clock fallback from the selected mode when the TCON clock is
+  `0` or `24 MHz`. The package preserves the stock monitor and SCP blobs.
+- Safety validation: package strings include `drm hdmi force cyberdeck mode`,
+  `1024x600`, `sunxi_drm_env`, `sunxi_hdmi_env`, and script-first
+  `scan_dev_for_boot`; they do not include `sunxi_drm reinit`.
