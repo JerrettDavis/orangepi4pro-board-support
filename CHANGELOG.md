@@ -15,6 +15,8 @@
   sun60iw2 PLL selection path, allowing the 1024x600 / 49 MHz cyberdeck mode to
   use the same `0xE8193000` TOP PHY PLL value Linux uses after HDMI becomes
   visible.
+- Added TOP PHY PLL register fields to U-Boot HDMI diagnostics so bootargs can
+  prove whether pre-OS HDMI programmed the same registers as visible Linux.
 - Added a U-Boot HDMI reinit stage diagnostic patch that records the real
   disable, mode-set, TCON init, clock-rate, HDMI config, TOP PHY, and
   DesignWare core state for the pre-OS HDMI pattern test.

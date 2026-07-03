@@ -1,0 +1,105 @@
+--- a/drivers/video/drm/sunxi_drm_hdmi.c
++++ b/drivers/video/drm/sunxi_drm_hdmi.c
+@@ -647,13 +647,19 @@
+ 	int ret_config = 0;
+ 	u32 top_cfg = 0;
+ 	u32 top_stat = 0;
++	u32 top_pll = 0;
++	u32 top_sel = 0;
++	u32 top_ldo = 0;
++	u32 top_pat0 = 0;
++	u32 top_pat1 = 0;
++	u32 top_lockreg = 0;
+ 	u8 phy_conf0 = 0;
+ 	u8 phy_stat0 = 0;
+ 	u8 mc_phyrstz = 0;
+ 	u8 mc_lockon = 0;
+ 	u8 fc_invid = 0;
+ 	u8 fc_gcp = 0;
+-	char diag[256];
++	char diag[384];
+ 
+ 	if (!drm || list_empty(&drm->display_list))
+ 		return -1;
+@@ -716,6 +722,12 @@
+ 	if (hdmi->hdmi_core.plat_data && hdmi->hdmi_core.plat_data->use_top_phy) {
+ 		top_cfg = top_phy_read(0);
+ 		top_stat = top_phy_read(4);
++		top_pll = top_phy_read(8);
++		top_sel = top_phy_read(9);
++		top_ldo = top_phy_read(10);
++		top_pat0 = top_phy_read(11);
++		top_pat1 = top_phy_read(12);
++		top_lockreg = top_phy_read(16);
+ 	}
+ 	phy_conf0 = (u8)dw_read(PHY_CONF0);
+ 	phy_stat0 = (u8)dw_read(PHY_STAT0);
+@@ -725,13 +737,14 @@
+ 	fc_gcp = (u8)dw_read(FC_GCP);
+ 
+ 	snprintf(diag, sizeof(diag),
+-		 "reinit=d%d,x%d,m%d,t%d,s%d,i%d,n%d,r%d,c%d,drv%d,drm%d,ms%d,mode%dx%d,clk%u,top%08x_%08x,core%02x%02x%02x%02x%02x%02x",
++		 "reinit=d%d,x%d,m%d,t%d,s%d,i%d,n%d,r%d,c%d,drv%d,drm%d,ms%d,mode%dx%d,clk%u,top%08x_%08x_%08x_%08x_%08x_%08x_%08x_%08x,core%02x%02x%02x%02x%02x%02x",
+ 		 ret_dis_drv, ret_tcon_exit, ret_disp_mode, ret_timing,
+ 		 ret_select, ret_disp_info, ret_tcon_init, ret_rate, ret_config,
+ 		 hdmi->hdmi_ctrl.drv_enable, hdmi->hdmi_ctrl.drm_enable,
+ 		 hdmi->hdmi_ctrl.drm_mode_set,
+ 		 hdmi->drm_mode.hdisplay, hdmi->drm_mode.vdisplay,
+-		 hdmi->disp_timing.pixel_clk, top_cfg, top_stat,
++		 hdmi->disp_timing.pixel_clk, top_cfg, top_stat, top_pll, top_sel,
++		 top_ldo, top_pat0, top_pat1, top_lockreg,
+ 		 phy_conf0, phy_stat0, mc_phyrstz, mc_lockon, fc_invid, fc_gcp);
+ 	env_set("opi_hdmi_reinit_diag", diag);
+ 
+@@ -1349,6 +1362,12 @@
+ 	unsigned long hdmi_rate = 0;
+ 	u32 top_cfg = 0;
+ 	u32 top_stat = 0;
++	u32 top_pll = 0;
++	u32 top_sel = 0;
++	u32 top_ldo = 0;
++	u32 top_pat0 = 0;
++	u32 top_pat1 = 0;
++	u32 top_lockreg = 0;
+ 	u8 phy_conf0 = 0;
+ 	u8 phy_stat0 = 0;
+ 	u8 mc_phyrstz = 0;
+@@ -1358,7 +1377,7 @@
+ 	u8 top_lock = 0;
+ 	u8 top_clk_sel = 0xff;
+ 	u8 top_pad_sel = 0xff;
+-	char diag[256];
++	char diag[384];
+ 
+ 	if (!drm || list_empty(&drm->display_list)) {
+ 		env_set("opi_hdmi_diag", "hdmi=drm-missing");
+@@ -1401,6 +1420,12 @@
+ 		top_pad_sel = top_phy_get_pad_select();
+ 		top_cfg = top_phy_read(0);
+ 		top_stat = top_phy_read(4);
++		top_pll = top_phy_read(8);
++		top_sel = top_phy_read(9);
++		top_ldo = top_phy_read(10);
++		top_pat0 = top_phy_read(11);
++		top_pat1 = top_phy_read(12);
++		top_lockreg = top_phy_read(16);
+ 	}
+ 	if (dw) {
+ 		phy_conf0 = (u8)dw_read(PHY_CONF0);
+@@ -1412,7 +1437,7 @@
+ 	}
+ 
+ 	snprintf(diag, sizeof(diag),
+-		 "hdmi=fast%d,hpd%d,clk%d,out%d,drm%d,mode%d,tcon%lu,hdmi%lu,pix%u,tmds%u,toplock%d,topclk%d,toppad%d,top0_%08x,top10_%08x,phy%02x,stat%02x,rst%02x,lock%02x,vid%02x,gcp%02x",
++		 "hdmi=fast%d,hpd%d,clk%d,out%d,drm%d,mode%d,tcon%lu,hdmi%lu,pix%u,tmds%u,toplock%d,topclk%d,toppad%d,top0_%08x,top10_%08x,top20_%08x,top24_%08x,top28_%08x,top2c_%08x,top30_%08x,top40_%08x,phy%02x,stat%02x,rst%02x,lock%02x,vid%02x,gcp%02x",
+ 		 pctl->dts_fast_output ? 1 : 0,
+ 		 pctl->drv_hpd_state ? 1 : 0,
+ 		 pctl->drv_clock ? 1 : 0,
+@@ -1423,6 +1448,7 @@
+ 		 dw ? dw->pixel_clk : 0,
+ 		 dw ? dw->tmds_clk : 0,
+ 		 top_lock, top_clk_sel, top_pad_sel, top_cfg, top_stat,
++		 top_pll, top_sel, top_ldo, top_pat0, top_pat1, top_lockreg,
+ 		 phy_conf0, phy_stat0, mc_phyrstz, mc_lockon, fc_invid, fc_gcp);
+ 	env_set("opi_hdmi_diag", diag);
+ 	env_set("opi_hdmi_diag_ok", "true");

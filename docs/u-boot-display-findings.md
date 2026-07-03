@@ -25,6 +25,21 @@ Captured 2026-07-02 after the video-first selector test hung before Linux.
   `837084d8d16916713c8ae23e2b7690eb747373be6143914347df70dba9c52767`
 - Raw built U-Boot artifact SHA-256:
   `81e5d7f9fc8fe52c777ee805cde0b4d1d1407004f501daa9f22aaca9eb145fde`
+- The first reboot with that package still did not show a bootloader image and
+  still exported `top10_00000033` / `stat03`. Patch
+  `configs/u-boot/0022-add-top-phy-pll-env-diag.patch` adds the actual TOP PHY
+  PLL/config words (`top20`, `top24`, `top28`, `top2c`, `top30`, `top40`) to
+  the U-Boot-exported diagnostics. Linux visible state reads
+  `top20=0xe8193000`, `top24=0x00000080`, `top40=0x00000001`,
+  `top10=0x00000037`, `PHY_STAT0=0xf3`.
+- Diagnostic package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-topphy-diag-1024x600.fex`
+- Package SHA-256:
+  `69cac94152ab5c8e9fa63a76fd6fbd0f6921cedc253d2b849b3ed82b8f7420ce`
+- Packaged U-Boot item SHA-256:
+  `f96ecb76a8570f4a8d456e5b3cd5f4637efb34d67eb8d1cc110caf5791aabf55`
+- Raw built U-Boot artifact SHA-256:
+  `b15d675fbe82d6950bd2ecaf410a737d0caca1f65f330125632b1f7cdc9126cb`
 
 Known-good control-flow result:
 
