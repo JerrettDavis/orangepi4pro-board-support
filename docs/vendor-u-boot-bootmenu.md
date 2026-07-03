@@ -259,6 +259,26 @@ backup_sha256=74f1cffbafe1c14c5a6ff6e410a73b3b51bb08f678fb151c806d8ff781209bef
 This package has been inspected, installed to `/dev/mmcblk1`, and verified by
 reading the package slot back from SD.
 
+The 2026-07-03 minimal embedded-logo candidate uses only the script-first
+distro scan-order patch and a generated replacement for the vendor
+`drivers/video/drm/boot_bmp.h` array. It intentionally does not include the
+later DM-video selector, file-backed `/boot/boot1.bmp` loader, or
+high-contrast diagnostic screen patches:
+
+```text
+device=/dev/mmcblk1
+package=/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-scriptfirst-embedded-selector-logo.fex
+package_sha256=7659a7cae01b27687a726ea50622af6f922f21d4c34e4dfc2986c9984e040eda
+u_boot_item_sha256=dae006848b22e2b8e768e32a1830cfc7507f3f59081eb17e190fef3bba5ac5e8
+selector_bmp_sha256=bc3dcbd5a046168fe3b463b66da96cddafd84c0779c804f308b5d788c46bcb03
+selector_bmp=file: PC bitmap, Windows 3.x format, 320 x 240 x 24, cbSize 230454
+backup=/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260703T060525Z.bin
+backup_sha256=c061346c375f3d5847c49bc0df958514c9ed2355c7f167c856c099cbd2988fed
+```
+
+This package has been inspected, installed to `/dev/mmcblk1`, and verified by
+reading the package slot back from SD.
+
 The 2026-07-03 framebuffer-test diagnostic candidate adds `sunxi_drm fbtest`.
 It keeps the same script-first bootmenu, embedded selector logo, native
 `1024x600` HDMI fallback, and `sunxi_drm_env` diagnostic. The new command
