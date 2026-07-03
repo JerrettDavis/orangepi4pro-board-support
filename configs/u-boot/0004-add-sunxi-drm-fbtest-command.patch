@@ -1,0 +1,79 @@
+diff --git a/drivers/video/drm/sunxi_drm_drv.c b/drivers/video/drm/sunxi_drm_drv.c
+--- a/drivers/video/drm/sunxi_drm_drv.c
++++ b/drivers/video/drm/sunxi_drm_drv.c
+@@ -1628,5 +1628,56 @@
+ 	return 0;
+ }
+ 
++static int sunxi_drm_fbtest(void)
++{
++	struct drm_framebuffer *fb;
++	u32 *pixels;
++	u32 colors[] = {
++		0xffff0000,
++		0xff00ff00,
++		0xff0000ff,
++		0xffffffff,
++		0xffffff00,
++		0xffff00ff,
++		0xff00ffff,
++		0xff404040,
++	};
++	u32 x, y, stripe, color;
++	char diag[128];
++
++	fb = drm_fb_lock();
++	if (!fb || !fb->dma_addr || !fb->width || !fb->height) {
++		env_set("opi_fbtest_diag", "fbtest=missing");
++		return -ENODEV;
++	}
++
++	pixels = (u32 *)fb->dma_addr;
++	stripe = fb->width / ARRAY_SIZE(colors);
++	if (!stripe)
++		stripe = 1;
++
++	for (y = 0; y < fb->height; y++) {
++		for (x = 0; x < fb->width; x++) {
++			color = colors[(x / stripe) % ARRAY_SIZE(colors)];
++			if (x < 8 || y < 8 || x >= fb->width - 8 || y >= fb->height - 8)
++				color = 0xffffffff;
++			if (x > fb->width / 2 - 4 && x < fb->width / 2 + 4)
++				color = 0xffffffff;
++			if (y > fb->height / 2 - 4 && y < fb->height / 2 + 4)
++				color = 0xffffffff;
++			pixels[y * fb->width + x] = color;
++		}
++	}
++
++	flush_dcache_range((ulong)fb->dma_addr,
++			   ALIGN((ulong)(fb->dma_addr + fb->buf_size),
++				 CONFIG_SYS_CACHELINE_SIZE));
++
++	snprintf(diag, sizeof(diag), "fbtest=ok,w=%u,h=%u,addr=%lx,size=%u",
++		 fb->width, fb->height, (ulong)fb->dma_addr, fb->buf_size);
++	env_set("opi_fbtest_diag", diag);
++
++	return 0;
++}
++
+ static int do_sunxi_sunxi_drm(struct cmd_tbl_s *cmdtp, int flag, int argc,
+ 				char *const argv[])
+ {
+@@ -1652,5 +1703,7 @@
+ 			}
+ 		}
+ 
++	} else if (!strcmp(argv[1], "fbtest")) {
++		ret = sunxi_drm_fbtest();
+ 	}
+ 
+ 
+@@ -1670,6 +1723,7 @@
+ static char sunxi_drm_help_text[] =
+ 	"sunxi_drm dump - Print state and reg value\n"
+ 	"sunxi_drm colorbar [type] - Set clock frequency\n"
++	"sunxi_drm fbtest - Draw color bars into the active DRM framebuffer\n"
+ 	"sunxi_drm wb - Online Writeback image to boot-resource partition\n";
+ 
+ U_BOOT_CMD(

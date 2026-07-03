@@ -66,3 +66,20 @@ This candidate is intended to prove whether vendor U-Boot has an active DRM
 connector and framebuffer before Linux starts. The paired boot script appends
 `opi_pre_*` and `opi_post_*` diagnostics to `/proc/cmdline`; actual text-menu
 rendering still depends on whether U-Boot's console backend reaches the panel.
+
+The 1024x600 colorbar reboot still produced a black pre-kernel display even
+though U-Boot reported HDMI-A enabled at `1024x600`, 49 MHz, and a 1024x600
+framebuffer. The next test bypasses TCON pattern generation and uses
+`sunxi_drm fbtest`, which calls the vendor framebuffer/display-enable path and
+paints directly into the active DRM framebuffer.
+
+Installed framebuffer-test package:
+
+- Package SHA-256:
+  `831fad7f31e02c3fe099c2e83402ffc207d93ce2fe41272cb26fb8758fe9a2a0`.
+- U-Boot item SHA-256:
+  `472dd23358166ac1730513bcba60ec8606dba92d8ae87456bde61f851c5a5ae8`.
+- Recovery backup:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260703T011715Z.bin`.
+- Recovery backup SHA-256:
+  `d44158d530b844a15b7420fa22404ae7a4c1ce8005b42b4c260510dbe4e84f3f`.

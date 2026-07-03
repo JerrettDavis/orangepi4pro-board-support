@@ -241,6 +241,25 @@ backup_sha256=74f1cffbafe1c14c5a6ff6e410a73b3b51bb08f678fb151c806d8ff781209bef
 This package has been inspected, installed to `/dev/mmcblk1`, and verified by
 reading the package slot back from SD.
 
+The 2026-07-03 framebuffer-test diagnostic candidate adds `sunxi_drm fbtest`.
+It keeps the same script-first bootmenu, embedded selector logo, native
+`1024x600` HDMI fallback, and `sunxi_drm_env` diagnostic. The new command
+enables the vendor DRM framebuffer path and paints color bars directly into
+the active framebuffer:
+
+```text
+device=/dev/mmcblk1
+package=/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-bootmenu-scriptfirst-selector-logo-drm-env-1024x600-fbtest.fex
+package_sha256=831fad7f31e02c3fe099c2e83402ffc207d93ce2fe41272cb26fb8758fe9a2a0
+u_boot_item_sha256=472dd23358166ac1730513bcba60ec8606dba92d8ae87456bde61f851c5a5ae8
+selector_bmp_sha256=bc3dcbd5a046168fe3b463b66da96cddafd84c0779c804f308b5d788c46bcb03
+backup=/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260703T011715Z.bin
+backup_sha256=d44158d530b844a15b7420fa22404ae7a4c1ce8005b42b4c260510dbe4e84f3f
+```
+
+This package has been inspected, installed to `/dev/mmcblk1`, and verified by
+reading the package slot back from SD.
+
 The 2026-07-03 native-mode diagnostic candidate changes the vendor HDMI
 fallback to `1024x600` using the Linux/Xorg modeline and keeps the same
 script-first bootmenu, embedded selector logo, and `sunxi_drm_env` diagnostic:
