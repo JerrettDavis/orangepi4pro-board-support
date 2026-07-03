@@ -891,3 +891,28 @@ delivering a valid visible signal until Linux later performs its full
 - Safety validation: package strings include `drm hdmi force cyberdeck mode`,
   `1024x600`, `sunxi_drm_env`, `sunxi_hdmi_env`, and script-first
   `scan_dev_for_boot`; they do not include `sunxi_drm reinit`.
+- Reboot result: Linux reached `bootchooser=uboot-logo-preinit-ok` on the NVMe
+  root. U-Boot now reported the desired selected mode:
+  `mode=1024x600,clk=49000,fbw=1024,fbh=600`. The display still did not show a
+  bootloader image. HDMI diagnostics still showed stale clock programming:
+  `tcon0,hdmi24000000,pix49000,tmds49000`, so the next package keeps this
+  U-Boot binary and patches the embedded DTB HDMI clock bindings so `clk_hdmi`
+  resolves to the programmable `hdmi_tv` clock instead of the 24 MHz gate.
+
+2026-07-03 forced cyberdeck-mode plus HDMI clock-DTB package:
+
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-scriptfirst-diag-modeclock-force1024-hdmiclkdtb.fex`
+- Package SHA-256:
+  `78a8c9b079d96d33a396b1b1fc9f5bcf85c8fe80aee56e3777e20002bf3f5134`
+- U-Boot item SHA-256:
+  `65a9d1bec87a9d7e0dd41197ffc3f242f9437d342beae7d4f5eeccd1a2d9d5a6`
+- Scope: same forced `1024x600@49 MHz` passive diagnostic U-Boot, plus the
+  embedded DTB corrections from `prepare-vendor-sd-hdmi-power-package.sh`
+  with `--fast-1024x600` and `force_route=false`. This normalizes HDMI clocks
+  to `clk_tcon_tv clk_hdmi clk_hdmi_24M clk_bus_hdmi rst_main rst_sub`, adds
+  the CLDO2 HDMI power rail properties, and keeps vendor monitor/SCP blobs.
+- Safety validation: package strings include `drm hdmi force cyberdeck mode`,
+  `1024x600`, `clk_tcon_tv`, `clk_bus_hdmi`, `sunxi_drm_env`,
+  `sunxi_hdmi_env`, and script-first `scan_dev_for_boot`; they do not include
+  `sunxi_drm reinit`.
