@@ -302,6 +302,10 @@ Current HDMI-power candidate:
 - Build commands:
   `APPLY_DISPLAY_MODE_PATCH=false scripts/build-vendor-uboot.sh --bootmenu --clean`
   `scripts/prepare-vendor-sd-hdmi-power-package.sh --uboot .build/u-boot/artifacts/bootmenu/u-boot-sun60iw2p1.bin --hdmi-default-mode 1280x720 --force-route --vendor /usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex --output /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-diag-fast720p-force-route.fex`
+- Recovery backup:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260703T064907Z.bin`
+- Recovery backup SHA-256:
+  `0a5e149cfe14a96cf322f90e8b9cc6b6c23a423c852141a79a6973231923f098`
 - This package adds `sunxi_hdmi_env`, which exports HDMI HPD, clock, output,
   mode-set, pixel/TMDS clock, and top PHY lock/status data to `opi_hdmi_diag`.
   The boot script appends those diagnostics to the legacy `bootm` kernel
