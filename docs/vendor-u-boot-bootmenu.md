@@ -118,6 +118,21 @@ The generated BMP is also staged as
 `.build/u-boot/artifacts/bootmenu-selector-logo/selector-boot.bmp` for visual
 inspection.
 
+Build the minimal script-first embedded-logo variant:
+
+```bash
+scripts/build-vendor-uboot.sh --scriptfirst-logo --clean
+scripts/prepare-sd-bootmenu-package.sh \
+  --template /usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package.fex \
+  --uboot .build/u-boot/artifacts/scriptfirst-logo/u-boot-sun60iw2p1.bin \
+  --output /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-scriptfirst-embedded-selector-logo.fex
+```
+
+This variant keeps the vendor display/logo code path intact and changes only
+distro scan order plus `drivers/video/drm/boot_bmp.h`. It is intended for
+isolating the factory embedded `boot.bmp` path from the later file-backed and
+diagnostic display patches.
+
 Build the script-first menu variant with the replacement embedded boot logo and
 the U-Boot DRM environment diagnostic command:
 

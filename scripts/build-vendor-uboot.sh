@@ -28,7 +28,7 @@ usage() {
   cat <<'USAGE'
 Build the Orange Pi vendor U-Boot tree for sun60iw2 without flashing anything.
 
-Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu] [--selector-logo] [--clean]
+Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu|--scriptfirst-logo] [--selector-logo] [--clean]
 
 Environment overrides:
   SOURCE_DIR       Existing local vendor tree. Default:
@@ -58,6 +58,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --bootmenu)
       mode=bootmenu
+      ;;
+    --scriptfirst-logo)
+      mode=scriptfirst-logo
+      selector_logo=true
       ;;
     --selector-logo)
       mode=bootmenu
@@ -128,12 +132,15 @@ mkdir -p "$artifact_dir/lichee-chip/orangepi4pro/bin" "$artifact_dir/lichee-plat
 
 make "${make_common[@]}" "$defconfig"
 
-if [ "$mode" = bootmenu ]; then
+if [ "$mode" = bootmenu ] || [ "$mode" = scriptfirst-logo ]; then
   if [ ! -r "$bootmenu_patch" ]; then
     printf 'ERROR: bootmenu source patch not readable: %s\n' "$bootmenu_patch" >&2
     exit 1
   fi
   git -C "$work_dir" apply "$bootmenu_patch"
+fi
+
+if [ "$mode" = bootmenu ]; then
   if [ ! -r "$display_diag_patch" ]; then
     printf 'ERROR: display diagnostic patch not readable: %s\n' "$display_diag_patch" >&2
     exit 1
