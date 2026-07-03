@@ -40,6 +40,21 @@ Captured 2026-07-02 after the video-first selector test hung before Linux.
   `f96ecb76a8570f4a8d456e5b3cd5f4637efb34d67eb8d1cc110caf5791aabf55`
 - Raw built U-Boot artifact SHA-256:
   `b15d675fbe82d6950bd2ecaf410a737d0caca1f65f330125632b1f7cdc9126cb`
+- The reboot with that package proved TOP PHY PLL parity but still showed
+  `top10_00000033`, `stat03`, and `lock70`; Linux visible state has
+  `top10=0x37`, `PHY_STAT0=0xf3`, and `MC_LOCKONCLOCK=0x79`.
+- Patch `configs/u-boot/0023-sync-linux-hdmi-mc-clock-enable.patch` ports the
+  Linux `dw_mc_clk_all_enable()` order: enable audio clock first, wait 20 ms,
+  and leave PREP enabled. This directly targets the `lock70` to `lock79`
+  difference without enabling the unsafe full DRM reinit path.
+- MC clock-sequence package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-mcclk-1024x600.fex`
+- Package SHA-256:
+  `4d15d7c88b17aa1114aa99175ad489a4d3a36142430736fda2a4b113cb1e1844`
+- Packaged U-Boot item SHA-256:
+  `4febc8f1543f071fd12d63949e3ca7a79f7b030c7668c212029221c17cce46c1`
+- Raw built U-Boot artifact SHA-256:
+  `76cee5072f3f554eb26bdd93ee24dae1230cec83092e98c13c4ced0014071319`
 
 Known-good control-flow result:
 

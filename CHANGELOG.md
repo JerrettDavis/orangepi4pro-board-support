@@ -17,6 +17,8 @@
   visible.
 - Added TOP PHY PLL register fields to U-Boot HDMI diagnostics so bootargs can
   prove whether pre-OS HDMI programmed the same registers as visible Linux.
+- Synced the U-Boot HDMI main-controller clock enable sequence with Linux so
+  audio/PREP clock lock state can match the kernel-visible HDMI path.
 - Added a U-Boot HDMI reinit stage diagnostic patch that records the real
   disable, mode-set, TCON init, clock-rate, HDMI config, TOP PHY, and
   DesignWare core state for the pre-OS HDMI pattern test.
