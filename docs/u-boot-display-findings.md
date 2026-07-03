@@ -916,6 +916,41 @@ delivering a valid visible signal until Linux later performs its full
   `1024x600`, `clk_tcon_tv`, `clk_bus_hdmi`, `sunxi_drm_env`,
   `sunxi_hdmi_env`, and script-first `scan_dev_for_boot`; they do not include
   `sunxi_drm reinit`.
+- Reboot result: Linux reached the NVMe root with
+  `bootchooser=uboot-logo-preinit-ok`, but U-Boot exported
+  `opi_logo_hdmi=drm-missing` and `opi_logo_drm=missing`. That proves even the
+  clock-only embedded-DTB rewrite prevents the vendor DRM display list from
+  being available at boot-script time. Do not use the embedded-DTB clock
+  rewrite path for the next visual tests.
+
+2026-07-03 HDMI TV clock fallback package:
+
+- Build command:
+  `scripts/build-vendor-uboot.sh --scriptfirst-diag-modeclock --clean`
+- Build source:
+  Orange Pi U-Boot `v2018.05-sun60iw2`
+  `b791be842935b27268ae3d00e943a9075495f30a`
+- Build artifact:
+  `.build/u-boot/artifacts/scriptfirst-diag-modeclock/u-boot-sun60iw2p1.bin`
+- Build artifact SHA-256:
+  `30173d1158694386a13d44a60f5a6dfca551ecc4640726a9fd0b8f8b6e0ce2e8`
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-scriptfirst-diag-modeclock-force1024-hdmitvclk.fex`
+- Package SHA-256:
+  `000821770992c9124c51dddc360fb6dcd45f9bbe7f6c88bc72e07fdc953fa532`
+- U-Boot item SHA-256:
+  `30173d1158694386a13d44a60f5a6dfca551ecc4640726a9fd0b8f8b6e0ce2e8`
+- Scope: stock embedded U-Boot DTB, vendor monitor/SCP blobs, script-first scan
+  order, passive `sunxi_drm_env`/`sunxi_hdmi_env`, forced `1024x600@49 MHz`
+  mode selection, and a code-side fallback that enables/programs the named
+  `hdmi_tv` clock when the existing HDMI clock handle still reports `0` or
+  `24 MHz`.
+- Safety validation: package strings include `drm hdmi force cyberdeck mode`,
+  `1024x600`, `sunxi_drm_env`, `sunxi_hdmi_env`, `tv%lu`, and script-first
+  `scan_dev_for_boot`; they do not include `sunxi_drm reinit`.
+- Expected reboot evidence: retain `bootchooser=uboot-logo-preinit-ok` and
+  retained diagnostics instead of `drm-missing`; `opi_logo_hdmi` should include
+  a `tv49000000`-style value if the named clock fallback worked.
 - Reboot result: Linux reached the NVMe root, but both diagnostics regressed to
   `opi_logo_hdmi=diag-missing` and `opi_logo_drm=diag-missing`. The diagnostic
   command strings still exist in the installed package, so the broader embedded

@@ -37,6 +37,7 @@ hdmi_top_phy_diag_patch=${HDMI_TOP_PHY_DIAG_PATCH:-"$repo_root/configs/u-boot/00
 hdmi_mc_clock_patch=${HDMI_MC_CLOCK_PATCH:-"$repo_root/configs/u-boot/0023-sync-linux-hdmi-mc-clock-enable.patch"}
 hdmi_tcon_format_patch=${HDMI_TCON_FORMAT_PATCH:-"$repo_root/configs/u-boot/0024-pass-hdmi-format-to-tcon-reinit.patch"}
 force_cyberdeck_hdmi_mode_patch=${FORCE_CYBERDECK_HDMI_MODE_PATCH:-"$repo_root/configs/u-boot/0025-force-cyberdeck-hdmi-mode.patch"}
+hdmi_tv_clock_fallback_patch=${HDMI_TV_CLOCK_FALLBACK_PATCH:-"$repo_root/configs/u-boot/0026-program-hdmi-tv-clock-fallback.patch"}
 apply_drm_reinit_patch=${APPLY_DRM_REINIT_PATCH:-false}
 applied_display_mode_patch=false
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
@@ -212,6 +213,17 @@ if [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ]; t
       "$work_dir/drivers/video/drm/sunxi_drm_hdmi.c" \
       || {
         printf 'ERROR: HDMI mode clock patch did not apply cleanly\n' >&2
+        exit 1
+      }
+    if [ ! -r "$hdmi_tv_clock_fallback_patch" ]; then
+      printf 'ERROR: HDMI TV clock fallback patch not readable: %s\n' "$hdmi_tv_clock_fallback_patch" >&2
+      exit 1
+    fi
+    git -C "$work_dir" apply --recount "$hdmi_tv_clock_fallback_patch"
+    grep -q 'opi_hdmi_tv_clk' \
+      "$work_dir/drivers/video/drm/sunxi_drm_hdmi.c" \
+      || {
+        printf 'ERROR: HDMI TV clock fallback patch did not apply cleanly\n' >&2
         exit 1
       }
   fi
