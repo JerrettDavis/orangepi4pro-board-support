@@ -24,6 +24,20 @@
 - The 2026-07-04 desktop error popup was a stale LightDM crash report created
   during shutdown. It is tracked separately from U-Boot display work unless a
   fresh crash appears after the next test.
+- Reinstalling the stock vendor SD package
+  (`boot_package.fex`, SHA-256
+  `7a2661b080f5c5d8ba32566bc79f1ccfbfb8912a4a5c0c1a4856a9380542c807`)
+  preserved NVMe boot and restored the Ubuntu/Plymouth OS splash, but still
+  did not show a bootloader splash. Since stock SD U-Boot scans extlinux before
+  `boot.scr`, that reboot did not run the staged `sunxi_show_logo` hold.
+- The next bounded test installs
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_vendor-sd-scriptfirst.fex`
+  (SHA-256
+  `77ef94aee8f8a6ec27d130822b70187fbf4316773d7ae5d59150e9027c654670`).
+  This candidate is the stock SD U-Boot item with only the compiled distro scan
+  order changed from extlinux-first to script-first; monitor and SCP payloads
+  remain stock. It lets `/boot/boot.scr` call `sunxi_show_logo` and hold for
+  20 seconds before NVMe boot, while avoiding custom HDMI reinit code.
 
 Captured 2026-07-02 after the video-first selector test hung before Linux.
 
