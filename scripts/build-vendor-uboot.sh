@@ -505,6 +505,50 @@ if [ "$mode" = bootmenu ]; then
       printf 'ERROR: HDMI TCON format patch did not apply cleanly\n' >&2
       exit 1
     }
+  if [ ! -r "$hdmi_stale_enable_retry_patch" ]; then
+    printf 'ERROR: HDMI stale-enable retry patch not readable: %s\n' "$hdmi_stale_enable_retry_patch" >&2
+    exit 1
+  fi
+  git -C "$work_dir" apply --recount "$hdmi_stale_enable_retry_patch"
+  grep -q 'PHY_STAT0_RX_SENSE_ALL_MASK' \
+    "$work_dir/drivers/video/drm/sunxi_drm_hdmi.c" \
+    || {
+      printf 'ERROR: HDMI stale-enable retry patch did not apply cleanly\n' >&2
+      exit 1
+    }
+  if [ ! -r "$hdmi_logo_recover_patch" ]; then
+    printf 'ERROR: HDMI logo recovery patch not readable: %s\n' "$hdmi_logo_recover_patch" >&2
+    exit 1
+  fi
+  git -C "$work_dir" apply --recount "$hdmi_logo_recover_patch"
+  grep -q 'stale HDMI before logo' \
+    "$work_dir/drivers/video/drm/sunxi_drm_drv.c" \
+    || {
+      printf 'ERROR: HDMI logo recovery patch did not apply cleanly\n' >&2
+      exit 1
+    }
+  if [ ! -r "$hdmi_post_logo_retry_patch" ]; then
+    printf 'ERROR: HDMI post-logo retry patch not readable: %s\n' "$hdmi_post_logo_retry_patch" >&2
+    exit 1
+  fi
+  git -C "$work_dir" apply --recount "$hdmi_post_logo_retry_patch"
+  grep -q 'HDMI still unlocked after logo enable' \
+    "$work_dir/drivers/video/drm/sunxi_drm_drv.c" \
+    || {
+      printf 'ERROR: HDMI post-logo retry patch did not apply cleanly\n' >&2
+      exit 1
+    }
+  if [ ! -r "$hdmi_relaxed_logo_retry_patch" ]; then
+    printf 'ERROR: HDMI relaxed logo retry patch not readable: %s\n' "$hdmi_relaxed_logo_retry_patch" >&2
+    exit 1
+  fi
+  git -C "$work_dir" apply --recount "$hdmi_relaxed_logo_retry_patch"
+  grep -q 'post-skip-locked-rxsense' \
+    "$work_dir/drivers/video/drm/sunxi_drm_drv.c" \
+    || {
+      printf 'ERROR: HDMI relaxed logo retry patch did not apply cleanly\n' >&2
+      exit 1
+    }
   if [ "$apply_drm_reinit_patch" = true ]; then
     if [ ! -r "$drm_reinit_visual_diag_patch" ]; then
       printf 'ERROR: DRM reinit visual diagnostics patch not readable: %s\n' "$drm_reinit_visual_diag_patch" >&2

@@ -1641,3 +1641,31 @@ delivering a valid visible signal until Linux later performs its full
   `1024x600`, `clk_tcon_tv`, `clk_bus_hdmi`, `sunxi_drm_env`,
   `sunxi_hdmi_env`, and script-first `scan_dev_for_boot`; they do not include
   `sunxi_drm reinit`.
+
+2026-07-04 bootmenu RX-sense stale-state test:
+
+- Live Linux-visible HDMI byte reads showed the HDMI controller state that
+  actually produces a picture:
+  `PHY_STAT0=0xf3`, `MC_LOCKONCLOCK=0x79`, and `FC_PACKET_TX_EN=0x1f`.
+- The previous U-Boot handoff reported `stat03` and `lock70`. That has HPD,
+  PHY lock, pixel lock, and TMDS lock, but no RX-sense bits. The old stale
+  checks treated this as usable HDMI even though the monitor stayed black until
+  Linux performed a later full HDMI atomic disable/enable.
+- `configs/u-boot/0029-retry-stale-hdmi-enable-state.patch` and
+  `configs/u-boot/0032-relax-hdmi-logo-retry-and-report-skip.patch` now require
+  `PHY_STAT0_RX_SENSE_ALL_MASK` before U-Boot skips HDMI reconfiguration.
+- `scripts/build-vendor-uboot.sh --bootmenu` now applies the stale-enable and
+  logo-retry patches so the visual-selector build path actually contains this
+  RX-sense check.
+- Build artifact SHA-256:
+  `9e289fab52d09d76f967b2e664765500f33ebc1d06003982b9eff920858550d4`
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-rxsense-stale-retry-hdmi-pattern-1024x600.fex`
+- Package SHA-256:
+  `feacc7a99a48a1f6a64318b8372042f0b24df36bc5bae1f35f4bcc36581e6438`
+- U-Boot item SHA-256:
+  `dc8fabad16732d543f76b584e211b02e741eb4f0cdbbff4db9887a35517e3975`
+- SD backup before install:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T043036Z.bin`
+- Backup SHA-256:
+  `d8dcda3f1f422f972d57cd761bcd3c179c42ef5c218e629179a7c2d161dfb2ef`

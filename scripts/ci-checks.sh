@@ -18,11 +18,14 @@ else
 fi
 
 printf 'Compiling touch helper sources...\n'
-gcc -O2 -Wall -Wextra -Werror -o /tmp/qdtech-touch-x11 \
+tmp_build=$(mktemp -d)
+trap 'rm -rf "$tmp_build"' EXIT
+gcc -O2 -Wall -Wextra -Werror -o "$tmp_build/qdtech-touch-x11" \
   packages/qdtech-touch-x11/bin/qdtech-touch-x11.c -lusb-1.0 -lX11 -lXtst
-gcc -O2 -Wall -Wextra -Werror -o /tmp/qdtech-usb-dump \
+gcc -O2 -Wall -Wextra -Werror -o "$tmp_build/qdtech-usb-dump" \
   packages/qdtech-touch-x11/bin/qdtech-usb-dump.c -lusb-1.0
-rm -f /tmp/qdtech-touch-x11 /tmp/qdtech-usb-dump
+gcc -O2 -Wall -Wextra -Werror -o "$tmp_build/orangepi-read-mmio" \
+  tools/read-mmio.c
 
 printf 'Running sunxi TOC1 package self-test...\n'
 python3 -m py_compile scripts/sunxi-toc1-package.py scripts/generate-uboot-selector-logo.py

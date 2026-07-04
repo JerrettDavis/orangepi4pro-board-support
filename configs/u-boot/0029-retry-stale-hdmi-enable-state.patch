@@ -19,6 +19,7 @@ diff --git a/drivers/video/drm/sunxi_drm_hdmi.c b/drivers/video/drm/sunxi_drm_hd
 +			mc_lockon = (u8)dw_read(MC_LOCKONCLOCK);
 +		}
 +		if ((phy_stat0 & PHY_STAT0_TX_PHY_LOCK_MASK) &&
++		    ((phy_stat0 & PHY_STAT0_RX_SENSE_ALL_MASK) == PHY_STAT0_RX_SENSE_ALL_MASK) &&
 +		    (mc_lockon & MC_LOCKONCLOCK_TCLK_MASK) &&
 +		    (mc_lockon & MC_LOCKONCLOCK_PCLK_MASK)) {
  		hdmi_inf("hdmi drv has been enable!\n");

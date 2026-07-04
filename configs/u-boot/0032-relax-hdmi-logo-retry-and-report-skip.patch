@@ -25,6 +25,7 @@ diff --git a/drivers/video/drm/sunxi_drm_drv.c b/drivers/video/drm/sunxi_drm_drv
 +		*mc_lockon = lock;
 +
 +	if ((phy & PHY_STAT0_TX_PHY_LOCK_MASK) &&
++	    ((phy & PHY_STAT0_RX_SENSE_ALL_MASK) == PHY_STAT0_RX_SENSE_ALL_MASK) &&
 +	    (lock & MC_LOCKONCLOCK_TCLK_MASK) &&
 +	    (lock & MC_LOCKONCLOCK_PCLK_MASK))
 +		return false;
@@ -54,9 +55,10 @@ diff --git a/drivers/video/drm/sunxi_drm_drv.c b/drivers/video/drm/sunxi_drm_drv
 +	pre_phy = (u8)dw_read(PHY_STAT0);
 +	pre_lock = (u8)dw_read(MC_LOCKONCLOCK);
 +	if ((pre_phy & PHY_STAT0_TX_PHY_LOCK_MASK) &&
++	    ((pre_phy & PHY_STAT0_RX_SENSE_ALL_MASK) == PHY_STAT0_RX_SENSE_ALL_MASK) &&
 +	    (pre_lock & MC_LOCKONCLOCK_TCLK_MASK) &&
 +	    (pre_lock & MC_LOCKONCLOCK_PCLK_MASK)) {
-+		env_set("opi_logo_recover", "post-skip-locked");
++		env_set("opi_logo_recover", "post-skip-locked-rxsense");
  		return 0;
 +	}
  
