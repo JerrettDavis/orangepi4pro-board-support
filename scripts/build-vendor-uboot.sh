@@ -49,6 +49,7 @@ bootgui_hpd_delay_patch=${BOOTGUI_HPD_DELAY_PATCH:-"$repo_root/configs/u-boot/00
 apply_drm_reinit_patch=${APPLY_DRM_REINIT_PATCH:-false}
 applied_display_mode_patch=false
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
+fix_uboot_header=${FIX_UBOOT_HEADER:-"$repo_root/scripts/fix-sunxi-uboot-header.py"}
 cross_compile=${CROSS_COMPILE:-arm-linux-gnueabi-}
 jobs=${JOBS:-$(nproc)}
 defconfig=${DEFCONFIG:-sun60iw2p1_t736_defconfig}
@@ -141,6 +142,7 @@ require_cmd() {
 
 require_cmd git
 require_cmd make
+require_cmd python3
 require_cmd "${cross_compile}gcc"
 require_cmd "${DTC:-/usr/bin/dtc}"
 
@@ -660,6 +662,17 @@ fi
 
 make "${make_common[@]}" -j"$jobs"
 
+for uboot_image in \
+  "$work_dir/u-boot.bin" \
+  "$work_dir/u-boot-dtb.bin" \
+  "$work_dir/u-boot-sun60iw2p1.bin" \
+  "$artifact_dir/lichee-chip/orangepi4pro/bin/u-boot-sun60iw2p1.bin" \
+  "$artifact_dir/lichee-plat/u-boot-sun60iw2p1.bin"; do
+  if [ -e "$uboot_image" ]; then
+    python3 "$fix_uboot_header" "$uboot_image"
+  fi
+done
+
 mkdir -p "$artifact_dir/$artifact_mode"
 for artifact in \
   u-boot \
@@ -675,7 +688,7 @@ for artifact in \
   fi
 done
 
-grep -E 'CONFIG_(CMD_BOOTMENU|AUTOBOOT_MENU_SHOW|USB_KEYBOARD|SYS_USB_EVENT_POLL|DM_KEYBOARD|EFI_LOADER|BOOTDELAY|DISP2_SUNXI|BOOT_GUI|UPDATE_DISPLAY_MODE|CMD_SUNXI_BMP|SUNXI_DRM_SUPPORT|DM_VIDEO)=' \
+grep -E 'CONFIG_(CMD_BOOTMENU|AUTOBOOT_MENU_SHOW|USB_KEYBOARD|SYS_USB_EVENT_POLL|DM_KEYBOARD|EFI_LOADER|BOOTDELAY|DISP2_SUNXI|HDMI2_DISP2_SUNXI|DEFAULT_PHY|BOOT_GUI|UPDATE_DISPLAY_MODE|CMD_SUNXI_BMP|SUNXI_DRM_SUPPORT|DM_VIDEO|AW_DRM)=' \
   "$work_dir/.config" > "$artifact_dir/$artifact_mode/config-summary.txt" || true
 
 cat > "$artifact_dir/$artifact_mode/SOURCE.txt" <<EOF

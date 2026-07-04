@@ -1757,3 +1757,62 @@ delivering a valid visible signal until Linux later performs its full
   should include `bootchooser=uboot-logo-preinit-ok` plus `opi_logo_hdmi=...`
   and `opi_logo_drm=...`, giving the U-Boot-side HDMI/DRM state at the failed
   visual point.
+- Reboot result: failed visually, but captured useful diagnostics. The display
+  still stayed black before Linux/plymouth. `/proc/cmdline` preserved
+  `bootchooser=uboot-logo-preinit-ok` and reported U-Boot HDMI/DRM state:
+  `opi_logo_drm=n1,type=11,conn=hdmi-a,init=1,en=1,...,mode=1920x1080,clk=148500`
+  and
+  `opi_logo_hdmi=fast0,hpd1,clk1,out1,drm1,...,hdmi24000000,pix148500,...,phy00,stat00,rst00,lock00`.
+  Interpretation: U-Boot reached the delayed logo path and believed HDMI-A was
+  enabled, but the low-level HDMI block remained idle/unlocked until Linux
+  later reinitialized display.
+
+2026-07-04 U-Boot spare-header post-processing fix:
+
+- Finding: every locally rebuilt U-Boot artifact had an incomplete Allwinner
+  spare header because the public vendor tree invokes
+  `scripts/sunxi_ubootools`, which is an x86-64 executable and fails on this
+  ARM board with `Exec format error`. The resulting U-Boot item still boots
+  from TOC1, but its header checksum field remains the stamp value
+  `0x5f0a6c39`, and `length`/`uboot_length` remain zero.
+- Stock comparison: the Orange Pi package
+  `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex`
+  has populated U-Boot header metadata (`length=1163264`,
+  `uboot_length=1163264`) and a valid spare-header checksum.
+- Fix: `scripts/fix-sunxi-uboot-header.py` now runs after a successful build,
+  pads U-Boot binaries to a 4-byte boundary, sets `length` and
+  `uboot_length`, and recomputes the Allwinner word-sum checksum using stamp
+  `0x5f0a6c39`.
+- Rebuilt command:
+  `scripts/build-vendor-uboot.sh --logo-delay-diag --clean`
+- Fixed build artifact:
+  `.build/u-boot/artifacts/logo-delay-diag/u-boot-sun60iw2p1.bin`
+- Fixed build artifact SHA-256:
+  `592231881302f90524aa9c36bdb134335283fc3b266b42f97f787b3cdde0bce5`
+- Fixed package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_nvme-logo-delay-diag-fixed-header.fex`
+- Fixed package SHA-256:
+  `eae2651699fa2c14556124f68dbc33f9d9c8dd298f0ee41574582f7a531e713e`
+- Package validation: TOC1 checksum is valid; monitor and SCP items still match
+  stock; U-Boot item length is `1194708`; U-Boot spare header has
+  `length=1194708`, `uboot_length=1194708`, and validates with
+  `scripts/fix-sunxi-uboot-header.py --verify`.
+- SD backup before install:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T171105Z.bin`
+- Backup SHA-256:
+  `17c2cb8ba2ffcdca5ecca9b15741afa0091ebc5673dc35a9eb67b77e3dbe77ec`
+- Installed-slot validation: the SD TOC1 slot at `bs=8192 skip=2050`
+  byte-matched package SHA
+  `eae2651699fa2c14556124f68dbc33f9d9c8dd298f0ee41574582f7a531e713e`.
+- Safety validation: required strings `scan_dev_for_scripts; run
+  scan_dev_for_extlinux`, `sunxi_drm_env`, `sunxi_hdmi_env`, and `waiting 5
+  seconds before sunxi_show_logo` are present. Known-unsafe strings
+  `sunxi_drm reinit`, `force visible reinit`, `post-logo visible reinit`,
+  `BOOTLOADER TEST SCREEN`, `dw_phy_wait_rxsense`, `refresh stale HDMI enable
+  before logo`, and `pre-enable-refresh` are absent.
+- Failed branch recorded but not retained as a build mode: enabling
+  `DISP2_SUNXI`/`CONFIG_BOOT_GUI` for sun60iw2 proved non-viable in the public
+  source because `drivers/video/sunxi/disp2` fails to compile with
+  `#error "undefined platform!!!"`. This suggests the visible factory splash is
+  not recoverable by simply enabling the legacy DISP2 BootGUI stack in this
+  branch.
