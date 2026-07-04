@@ -1020,6 +1020,20 @@ delivering a valid visible signal until Linux later performs its full
   `bootchooser=uboot-bootgui-logo-ok` or
   `bootchooser=uboot-bootgui-logo-fail`. A visible bootloader image during the
   hold would prove the factory BootGUI path is usable for the selector.
+- Reboot result: Linux reached NVMe with
+  `bootchooser=uboot-bootgui-logo-fail`. No bootloader image was visible; the
+  Ubuntu/Plymouth OS splash was visible. The `logo` command path is therefore
+  not usable with the current SD layout.
+- Next bounded variable: remove the synthetic `boot-resource` area by restoring
+  the pre-write reserved-window backup
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-boot-resource-before-20260704T022755Z.bin`
+  and re-test. This restores the SD reserved area to the state before the
+  boot-resource experiment, which did not improve the display and may affect
+  Allwinner partition lookup.
+- Restore action completed with
+  `scripts/restore-sd-boot-resource-backup.sh --backup /var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-boot-resource-before-20260704T022755Z.bin --device /dev/mmcblk1 --yes`.
+  Readback SHA-256 matched the backup:
+  `cfadd44a103cbd6d5726fa07b27d7aad2f67ed3930ff96901c486a5beaf7e723`.
 - Reboot result: Linux reached the NVMe root with
   `bootchooser=uboot-logo-preinit-ok`, but U-Boot exported
   `opi_logo_hdmi=drm-missing` and `opi_logo_drm=missing`. That proves even the
