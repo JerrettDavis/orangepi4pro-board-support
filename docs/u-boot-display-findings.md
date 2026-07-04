@@ -1001,6 +1001,35 @@ delivering a valid visible signal until Linux later performs its full
   `sunxi_hdmi_env`, and script-first `scan_dev_for_boot`; they do not include
   `sunxi_drm reinit`.
 
+2026-07-04 current HDMI-chain 720p pattern package:
+
+- Build command:
+  `HOME=/root APPLY_DISPLAY_MODE_PATCH=false scripts/build-vendor-uboot.sh --bootmenu --clean`
+- Packaging command:
+  `scripts/prepare-vendor-sd-hdmi-power-package.sh --uboot .build/u-boot/artifacts/bootmenu/u-boot-sun60iw2p1.bin --hdmi-default-mode 1280x720 --force-route --vendor /usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex --output /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-current-720p.fex`
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-current-720p.fex`
+- Package SHA-256:
+  `9d5d975f36049d614758dc3318d3d9af551f22ed3c3df8147e948057646f71c8`
+- Build artifact SHA-256:
+  `83a8e391827153cf126b1103de772d0093d03c3c37ad2ab9eee3dacb25e389bc`
+- U-Boot item SHA-256:
+  `3f44f36176542b0810312696e952dff7a6a3f96cbf69b612ba2068acefa3b68e`
+- Backup before install:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T035255Z.bin`
+- Backup SHA-256:
+  `7735f99a818cfb8e600d052a00bd43d4011c9d71690ab122cbcd6fbac23c025f`
+- Scope: this keeps the cumulative HDMI20 diagnostics, TOP PHY autocal, MC
+  clock, TCON clock/format, and FC iteration patches, but disables the
+  forced `1024x600` mode patch and packages the embedded U-Boot DTB with a
+  standard `1280x720` HDMI default mode. The staged boot script runs
+  `selector_visual_test=hdmi20_pattern` for 20 seconds.
+- Expected reboot evidence: a visible red HDMI20 bootloader pattern before
+  Linux starts would prove that the early HDMI path works at a standard mode.
+  If the screen remains black but `/proc/cmdline` advances to a 720p
+  `bootchooser=uboot-visual-hdmi20-pattern-ok` diagnostic, the remaining
+  failure is still below the U-Boot command/reporting layer.
+
 2026-07-04 bus-clock HDMI20 pattern result:
 
 - Installed package:
