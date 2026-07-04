@@ -2043,3 +2043,43 @@ delivering a valid visible signal until Linux later performs its full
   `top20_`/`top24_`/`top28_`/`top2c_`/`top30_`/`top40_` passive top-PHY
   diagnostics. The visual pass condition remains visible bootloader-stage
   output before Linux.
+- Reboot result: failed visually, but narrowed the root cause. U-Boot now
+  reports `mode=1024x600,clk=49000,fbw=1024,fbh=600` and
+  `tv49000000,pix49000,tmds49000`, proving the mode/default-clock fixes took
+  effect. The actual HDMI controller clock still reports `hdmi24000000` and
+  PHY/status/lock registers remain zero, so the transmitter is still not
+  reaching the Linux-visible link-enable state before the kernel takes over.
+
+2026-07-04 early display Linux-sequence candidate:
+
+- New hypothesis: the remaining delta is not menu rendering or mode selection;
+  it is the HDMI/TCON/PHY enable sequence. Linux becomes visible after it
+  performs an atomic disable/modeset/enable sequence that sets the TCON rate to
+  49 MHz, performs TOP PHY auto-calculation, enables the HDMI controller clock
+  sequence, and reaches `snps phy state: lock`.
+- Source-built candidate:
+  `scripts/build-vendor-uboot.sh --early-display-linuxseq --clean`
+- Upstream source:
+  `https://github.com/orangepi-xunlong/u-boot-orangepi.git`,
+  branch `v2018.05-sun60iw2`, commit
+  `b791be842935b27268ae3d00e943a9075495f30a`.
+- Patch set: the previous early-display-clockdiag patch set, plus the
+  Linux-like HDMI TCON clock reset sequence, TOP PHY PLL auto-calculation,
+  Linux-like HDMI MC clock enable ordering, and normal HDMI TCON format
+  handoff. It still excludes full DRM reinit, forced post-logo HDMI reinit,
+  stale-enable retry, and RX-sense wait patches.
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-early-display-linuxseq.fex`
+- Package SHA-256:
+  `ddcea8f1b115e049737929fe71595e7abd6d662066efe6c577815b397a0eb740`
+- U-Boot item SHA-256:
+  `1ad14e45fdfff7fadf88b40e3f68742cdd03c1f58cb320b904bd9fc7cc0dc5ee`
+- Recovery backup:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T180343Z.bin`
+- Recovery backup SHA-256:
+  `69965b9f8a61604700de727df000f51f7dda0d465d3c075b8c4f0e1a59e0e9ee`
+- Expected deltas after reboot: if the sequence fix reaches the transmitter,
+  the pre-Linux bootloader screen should become visible. If it is still black,
+  `/proc/cmdline` should at minimum show whether TOP PHY changed toward the
+  Linux value (`top20_e8193000`) and whether PHY/status/lock moved away from
+  zero.
