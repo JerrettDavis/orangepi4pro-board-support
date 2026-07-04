@@ -2159,3 +2159,8 @@ delivering a valid visible signal until Linux later performs its full
   PHY enable state. If post-recycle state changes but the display remains
   invisible, the next step should draw after recycle instead of adding another
   broad reinit path.
+- Reboot result: unsafe. The board did not boot normally and required external
+  WSL recovery. The recovered SD TOC1 slot now matches the vendor NVMe package
+  `boot_package_a733_nvme.fex` (`e626234a6eb9420ac29f515dd6acc543e7f0876e3dc086eec2fe221a50cc54f2`).
+  Package `6aa7b8590cf7d2b7b259aa08326a43d342c7ce6b0d233bc3e4faf5cbb3e46cd1`
+  and the `sunxi_drm hdmi_recycle` command are now blocked by the installer.

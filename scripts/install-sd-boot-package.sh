@@ -113,6 +113,15 @@ case "$package_sha" in
       exit 1
     fi
     ;;
+  6aa7b8590cf7d2b7b259aa08326a43d342c7ce6b0d233bc3e4faf5cbb3e46cd1)
+    if [ "${ORANGEPI4PRO_ALLOW_UNSAFE_BOOTLOADER_WRITE:-}" != 1 ]; then
+      printf 'ERROR: refusing known-unsafe boot package: %s\n' "$package_sha" >&2
+      printf '  package=%s\n' "$package" >&2
+      printf '  reason=2026-07-04 HDMI display recycle package bricked startup and required external recovery\n' >&2
+      printf 'Set ORANGEPI4PRO_ALLOW_UNSAFE_BOOTLOADER_WRITE=1 only for deliberate bench recovery testing.\n' >&2
+      exit 1
+    fi
+    ;;
 esac
 
 for unsafe_string in \
@@ -124,7 +133,9 @@ for unsafe_string in \
   'PHY_STAT0_RX_SENSE_ALL_MASK' \
   'force visible reinit' \
   'hdmi drv stale enable state' \
-  'post-skip-locked'; do
+  'post-skip-locked' \
+  'sunxi_drm_hdmi_recycle' \
+  'sunxi_drm hdmi_recycle'; do
   if strings -a "$package" | grep -Fq "$unsafe_string"; then
     if [ "${ORANGEPI4PRO_ALLOW_UNSAFE_BOOTLOADER_WRITE:-}" != 1 ]; then
       printf 'ERROR: refusing boot package containing known-unsafe string: %s\n' "$unsafe_string" >&2
