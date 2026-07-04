@@ -2083,3 +2083,39 @@ delivering a valid visible signal until Linux later performs its full
   `/proc/cmdline` should at minimum show whether TOP PHY changed toward the
   Linux value (`top20_e8193000`) and whether PHY/status/lock moved away from
   zero.
+- Reboot result: failed visually, but proved the TOP PHY auto-calculation patch
+  is now active in U-Boot. `/proc/cmdline` reported `top20_e8193000`, matching
+  the Linux-visible TOP PHY PLL value. HDMI still reported `phy00,stat00,
+  lock00`, so the remaining suspect is U-Boot short-circuiting the transmitter
+  enable path because `hdmi_ctrl.drv_enable` is already set even though the
+  hardware is not locked.
+
+2026-07-04 early display stale-enable flag candidate:
+
+- New hypothesis: U-Boot reaches `_sunxi_drv_hdmi_enable()` with
+  `hdmi_ctrl.drv_enable` already true, so it returns before running
+  `sunxi_hdmi_config()`. The diagnostics show `out1` while PHY/status/lock are
+  zero, which is exactly that stale software state.
+- Source-built candidate:
+  `scripts/build-vendor-uboot.sh --early-display-enablefix --clean`
+- Patch added:
+  `configs/u-boot/0035-clear-stale-hdmi-drv-enable.patch`
+- Patch behavior: if `drv_enable` is true but TX PHY lock and HDMI MC pixel/TMDS
+  clocks are not locked, clear only the stale `drv_enable` flag and continue
+  through the normal `_sunxi_drv_hdmi_enable()` path. This intentionally avoids
+  `display_disable()`, logo-stage reinit, RX-sense waits, and the previous
+  stale-enable retry patch strings that were associated with unsafe packages.
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-early-display-enablefix.fex`
+- Package SHA-256:
+  `0395dc594c53ed3ffb082f505cf08b40e965824abe9da37fdae117e434d6d476`
+- U-Boot item SHA-256:
+  `8e5dfcd8be7fd54ac3e83a2f9c02315c55f13dbebece7e34b6bca2778c2130cc`
+- Recovery backup:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T181011Z.bin`
+- Recovery backup SHA-256:
+  `265d0bc19b06201252c8a1d74933dbcd82593b7fbe63e3b227a5261d725b8738`
+- Expected deltas after reboot: visible pre-Linux output if the normal HDMI
+  config path now runs far enough. If still black, diagnostics should show
+  whether `phy`, `stat`, `lock`, `vid`, or `gcp` moved away from zero after the
+  stale flag reset.
