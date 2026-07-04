@@ -1941,3 +1941,23 @@ delivering a valid visible signal until Linux later performs its full
   become visible before Linux. The staged boot script still runs
   `sunxi_drm colorbar 1` for 20 seconds and should boot NVMe with
   `bootchooser=uboot-visual-colorbar-ok`.
+- Reboot result: U-Boot still executed `sunxi_drm colorbar 1` and returned
+  success, but HDMI stayed black before Linux. `/proc/cmdline` again contained
+  `bootchooser=uboot-visual-colorbar-ok`.
+
+2026-07-04 stock SD U-Boot vidconsole plus colorbar test:
+
+- Rationale: stock SD U-Boot can execute the colorbar command but still does
+  not produce a visible HDMI signal. The next test forces the standard U-Boot
+  video console path before colorbar: `stdout=serial,vidconsole`,
+  `stderr=serial,vidconsole`, `stdin=serial,usbkbd`, `cls`, and `echo`.
+- Staged environment on `/boot`, `/boot/efi`, and SD `/boot`:
+  `selector_console=true`, `selector_visual_test=colorbar`,
+  `selector_visual_hold=20`, `extlinux_first=false`,
+  `selector_logo_preinit=false`, `selector_diag_force_bootm=false`.
+- Installed TOC1 package remains the stock SD factory script-first package
+  `boot_package_vendor-sd-scriptfirst-stockvisual.fex`
+  (`sha256=77ef94aee8f8a6ec27d130822b70187fbf4316773d7ae5d59150e9027c654670`).
+- Expected reboot evidence: visible U-Boot console text and/or the 20-second
+  colorbar before Linux, followed by NVMe Ubuntu with
+  `bootchooser=uboot-visual-colorbar-ok`.
