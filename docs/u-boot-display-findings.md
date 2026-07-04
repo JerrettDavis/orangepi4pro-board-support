@@ -1034,6 +1034,16 @@ delivering a valid visible signal until Linux later performs its full
   `scripts/restore-sd-boot-resource-backup.sh --backup /var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-boot-resource-before-20260704T022755Z.bin --device /dev/mmcblk1 --yes`.
   Readback SHA-256 matched the backup:
   `cfadd44a103cbd6d5726fa07b27d7aad2f67ed3930ff96901c486a5beaf7e723`.
+- Reboot result after restoring the reserved window: Linux again reached NVMe
+  with `bootchooser=uboot-bootgui-logo-fail`; no bootloader image or selector
+  was visible before the OS splash. The synthetic `boot-resource` area is
+  therefore ruled out as the cause of the `logo` command failure.
+- Next staged test: return to the documented AW_DRM/HDMI20 isolation path with
+  `selector_visual_test=hdmi20_pattern`, `selector_visual_hold=20`,
+  `selector_logo_preinit=false`, and the same script-first stock SD package.
+  Expected post-reboot marker:
+  `bootchooser=uboot-visual-hdmi20-pattern-ok` or
+  `bootchooser=uboot-visual-hdmi20-pattern-fail`.
 - Reboot result: Linux reached the NVMe root with
   `bootchooser=uboot-logo-preinit-ok`, but U-Boot exported
   `opi_logo_hdmi=drm-missing` and `opi_logo_drm=missing`. That proves even the
