@@ -1038,6 +1038,43 @@ delivering a valid visible signal until Linux later performs its full
   `unset` value so the next iteration can distinguish a failed HDMI pattern
   command from a still-invisible but programmed HDMI frame-composer path.
 
+2026-07-04 pattern-status 1024x600 result:
+
+- Installed package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-patternstatus-1024x600.fex`
+- Package SHA-256:
+  `2b79a35b9182a63a4304cb89aa1b1178fe214abe03050923b212a06e05a24abd`
+- Reboot result: Linux reached NVMe with
+  `bootchooser=uboot-visual-hdmi20-pattern-ok`. U-Boot reported
+  `mode=1024x600,clk=49000`, `hdmi49000000`, `toplock1`, and
+  `opi_pat_hdmipat=req1,tcon0,force01,rff,g00,b00`. The pattern command
+  returned success and programmed the HDMI frame-composer forced red pattern.
+- If no red pre-Linux image was visible, the remaining failure is after the
+  HDMI controller command path reports success. The next bounded test forces
+  one `_sunxi_drv_hdmi_enable()` before enabling the internal pattern, without
+  adding the known-unsafe full DRM reinit path.
+
+2026-07-04 pattern-reconfigure handoff:
+
+- Installed package for next reboot:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-pattern-reconfig-1024x600.fex`
+- Package SHA-256:
+  `5e1e7209d7fe8535c998c640593f280a6b8f94f7afc4115cb11218189687d92d`
+- U-Boot item SHA-256:
+  `56e9e8e882485333850f928920f0d79914e0fd36b8f5a7af8ff2099301bae972`
+- Safety/capability strings: contains `boot.scr`, `sunxi_hdmi20`,
+  `sunxi_drm_env`, `sunxi_hdmi_env`, `opi_hdmi_pattern_diag`,
+  `opi_hdmi_pattern_reconfig`, `opi_hdmi_diag`, and `1024x600`; does not
+  contain `sunxi_drm reinit` or `full hdmi reinit`.
+- Install evidence: `scripts/install-sd-boot-package.sh` backed up the
+  previous SD bootloader slot to
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T031632Z.bin`
+  and verified the new SD TOC1 slot by readback.
+- Expected evidence: `opi_pat_hdmipat=req1,reconfig0,...`. Visual success
+  would be a red bootloader screen before Linux; diagnostic success without
+  visual output will narrow the remaining issue to post-enable signal/display
+  visibility.
+
 2026-07-04 HDMI20 pattern retest with diagnostic-capable package:
 
 - Control result: with
