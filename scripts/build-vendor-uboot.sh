@@ -48,6 +48,7 @@ hdmi_relaxed_logo_retry_patch=${HDMI_RELAXED_LOGO_RETRY_PATCH:-"$repo_root/confi
 bootgui_hpd_delay_patch=${BOOTGUI_HPD_DELAY_PATCH:-"$repo_root/configs/u-boot/0033-delay-sunxi-show-logo-for-hdmi-hpd.patch"}
 early_display_delay_patch=${EARLY_DISPLAY_DELAY_PATCH:-"$repo_root/configs/u-boot/0034-delay-before-sunxi-display-init.patch"}
 hdmi_stale_flag_clear_patch=${HDMI_STALE_FLAG_CLEAR_PATCH:-"$repo_root/configs/u-boot/0035-clear-stale-hdmi-drv-enable.patch"}
+hdmi_display_recycle_patch=${HDMI_DISPLAY_RECYCLE_PATCH:-"$repo_root/configs/u-boot/0036-add-hdmi-display-recycle-command.patch"}
 apply_drm_reinit_patch=${APPLY_DRM_REINIT_PATCH:-false}
 applied_display_mode_patch=false
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
@@ -60,7 +61,7 @@ usage() {
   cat <<'USAGE'
 Build the Orange Pi vendor U-Boot tree for sun60iw2 without flashing anything.
 
-Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu|--scriptfirst-logo|--scriptfirst-diag|--scriptfirst-diag-modeclock|--bootgui-scriptfirst|--bootgui-hpd-delay|--logo-delay-diag|--early-display-delay|--early-display-clockdiag|--early-display-linuxseq|--early-display-enablefix] [--selector-logo] [--clean]
+Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu|--scriptfirst-logo|--scriptfirst-diag|--scriptfirst-diag-modeclock|--bootgui-scriptfirst|--bootgui-hpd-delay|--logo-delay-diag|--early-display-delay|--early-display-clockdiag|--early-display-linuxseq|--early-display-enablefix|--early-display-recycle] [--selector-logo] [--clean]
 
 Environment overrides:
   SOURCE_DIR       Existing local vendor tree. Default:
@@ -126,6 +127,9 @@ while [ "$#" -gt 0 ]; do
       ;;
     --early-display-enablefix)
       mode=early-display-enablefix
+      ;;
+    --early-display-recycle)
+      mode=early-display-recycle
       ;;
     --selector-logo)
       mode=bootmenu
@@ -197,7 +201,7 @@ mkdir -p "$artifact_dir/lichee-chip/orangepi4pro/bin" "$artifact_dir/lichee-plat
 
 make "${make_common[@]}" "$defconfig"
 
-if [ "$mode" = bootmenu ] || [ "$mode" = scriptfirst-logo ] || [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ] || [ "$mode" = bootgui-scriptfirst ] || [ "$mode" = bootgui-hpd-delay ] || [ "$mode" = logo-delay-diag ] || [ "$mode" = early-display-delay ] || [ "$mode" = early-display-clockdiag ] || [ "$mode" = early-display-linuxseq ] || [ "$mode" = early-display-enablefix ]; then
+if [ "$mode" = bootmenu ] || [ "$mode" = scriptfirst-logo ] || [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ] || [ "$mode" = bootgui-scriptfirst ] || [ "$mode" = bootgui-hpd-delay ] || [ "$mode" = logo-delay-diag ] || [ "$mode" = early-display-delay ] || [ "$mode" = early-display-clockdiag ] || [ "$mode" = early-display-linuxseq ] || [ "$mode" = early-display-enablefix ] || [ "$mode" = early-display-recycle ]; then
   if [ ! -r "$bootmenu_patch" ]; then
     printf 'ERROR: bootmenu source patch not readable: %s\n' "$bootmenu_patch" >&2
     exit 1
@@ -472,6 +476,59 @@ if [ "$mode" = early-display-enablefix ]; then
       && ! grep -q "$marker" "$work_dir/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_mc.c" \
       && ! grep -q "$marker" "$work_dir/board/sunxi/board_common.c"; then
       printf 'ERROR: early-display-enablefix marker missing: %s\n' "$marker" >&2
+      exit 1
+    fi
+  done
+  make "${make_common[@]}" olddefconfig
+fi
+
+if [ "$mode" = early-display-recycle ]; then
+  for patch in \
+    "$display_diag_patch" \
+    "$hdmi_diag_patch" \
+    "$display_fbtest_patch" \
+    "$display_mode_patch" \
+    "$hdmi_mode_clock_patch" \
+    "$hdmi_bus_clock_patch" \
+    "$hdmi_tv_clock_fallback_patch" \
+    "$tcon_hdmi_clock_sequence_patch" \
+    "$hdmi_top_phy_autocal_patch" \
+    "$hdmi_mc_clock_patch" \
+    "$hdmi_normal_tcon_format_patch" \
+    "$hdmi_passive_top_phy_diag_patch" \
+    "$hdmi_stale_flag_clear_patch" \
+    "$hdmi_display_recycle_patch" \
+    "$early_display_delay_patch"; do
+    if [ ! -r "$patch" ]; then
+      printf 'ERROR: early-display-recycle patch not readable: %s\n' "$patch" >&2
+      exit 1
+    fi
+    git -C "$work_dir" apply --recount "$patch"
+  done
+  for marker in \
+    sunxi_drm_env \
+    sunxi_hdmi_env \
+    'sunxi_drm_fbtest' \
+    '1024x600' \
+    'mode_rate && (clk_rate == 0 || clk_rate == 24000000)' \
+    'hdmi drv bus clock enable' \
+    opi_hdmi_tv_clk \
+    'sun60iw2 HDMI path fully drops the TCON' \
+    '_top_phy_pll_auto_cal' \
+    'Match Linux sun60iw2' \
+    'disp_cfg.format = hdmi->disp_config.format' \
+    'hdmi drv stale flag reset' \
+    sunxi_drm_hdmi_recycle \
+    opi_recycle_diag \
+    top20_ \
+    'mdelay(8000)'; do
+    if ! grep -q "$marker" "$work_dir/drivers/video/drm/sunxi_drm_drv.c" \
+      && ! grep -q "$marker" "$work_dir/drivers/video/drm/sunxi_drm_hdmi.c" \
+      && ! grep -q "$marker" "$work_dir/drivers/video/drm/sunxi_device/sunxi_tcon.c" \
+      && ! grep -q "$marker" "$work_dir/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/phy_top.c" \
+      && ! grep -q "$marker" "$work_dir/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_mc.c" \
+      && ! grep -q "$marker" "$work_dir/board/sunxi/board_common.c"; then
+      printf 'ERROR: early-display-recycle marker missing: %s\n' "$marker" >&2
       exit 1
     fi
   done

@@ -115,6 +115,27 @@ case "$package_sha" in
     ;;
 esac
 
+for unsafe_string in \
+  'sunxi_drm_reinit_active' \
+  '_sunxi_hdmi_reinit_active_display' \
+  'stale HDMI before logo' \
+  'HDMI still unlocked after logo enable' \
+  'dw_phy_wait_rxsense' \
+  'PHY_STAT0_RX_SENSE_ALL_MASK' \
+  'force visible reinit' \
+  'hdmi drv stale enable state' \
+  'post-skip-locked'; do
+  if strings -a "$package" | grep -Fq "$unsafe_string"; then
+    if [ "${ORANGEPI4PRO_ALLOW_UNSAFE_BOOTLOADER_WRITE:-}" != 1 ]; then
+      printf 'ERROR: refusing boot package containing known-unsafe string: %s\n' "$unsafe_string" >&2
+      printf '  package=%s\n' "$package" >&2
+      printf '  package_sha256=%s\n' "$package_sha" >&2
+      printf 'Set ORANGEPI4PRO_ALLOW_UNSAFE_BOOTLOADER_WRITE=1 only for deliberate bench recovery testing.\n' >&2
+      exit 1
+    fi
+  fi
+done
+
 if [ $((package_size % 4)) -ne 0 ]; then
   printf 'ERROR: package size is not 4-byte aligned: %s\n' "$package_size" >&2
   exit 1

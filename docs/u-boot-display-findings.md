@@ -2119,3 +2119,43 @@ delivering a valid visible signal until Linux later performs its full
   config path now runs far enough. If still black, diagnostics should show
   whether `phy`, `stat`, `lock`, `vid`, or `gcp` moved away from zero after the
   stale flag reset.
+
+2026-07-04 HDMI display recycle diagnostic:
+
+- Result before this candidate: the early-display enable-fix package booted
+  normally but did not produce a visible bootloader screen. U-Boot diagnostics
+  still showed the HDMI PHY/SNPS state as zero before Linux:
+  `phy00,stat00,rst00,lock00,vid00,gcp00`. The patch likely did not affect
+  that path because the boot-script `sunxi_drm colorbar` test did not force the
+  full display disable/init/enable sequence.
+- New source patch:
+  `configs/u-boot/0036-add-hdmi-display-recycle-command.patch`.
+- Build mode:
+  `scripts/build-vendor-uboot.sh --early-display-recycle --clean`.
+- Candidate package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-early-display-recycle.fex`.
+- Package SHA-256:
+  `6aa7b8590cf7d2b7b259aa08326a43d342c7ce6b0d233bc3e4faf5cbb3e46cd1`.
+- Packaged U-Boot item SHA-256:
+  `d94e2a883918c5c23e387e81e4e5721f7446a9a75dc41ddbd66a5bafb8f7192d`.
+- Backup before install:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T182428Z.bin`.
+- Backup SHA-256:
+  `f1bb9ce56b1a2f975443f717b45907366c60730e3de6e9e238cff3c89c29e959`.
+- The installer dry-run verified write geometry before install: write offset
+  `16793600`, write end `18179072`, first partition start `33554432`.
+- The installed SD bootloader slot was byte-verified against the candidate
+  package after writing.
+- The package contains `sunxi_drm hdmi_recycle`, `sunxi_drm_env`,
+  `sunxi_hdmi_env`, the 1024x600 mode fallback, HDMI bus-clock enable, TOP PHY
+  auto-calculation, and stale-flag clearing. It does not contain the blocked
+  full-reinit or RX-sense retry strings from previous non-booting candidates.
+- Expected reboot marker:
+  `bootchooser=uboot-visual-hdmi-recycle-ok` or
+  `bootchooser=uboot-visual-hdmi-recycle-fail`.
+- Expected diagnostic evidence is `opi_recycle_recycle=...` plus pre/post HDMI
+  diagnostics. If post-recycle HDMI state still reports
+  `phy00,stat00,rst00,lock00`, this path did not reach the Linux-visible HDMI
+  PHY enable state. If post-recycle state changes but the display remains
+  invisible, the next step should draw after recycle instead of adding another
+  broad reinit path.
