@@ -57,7 +57,7 @@ usage() {
   cat <<'USAGE'
 Build the Orange Pi vendor U-Boot tree for sun60iw2 without flashing anything.
 
-Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu|--scriptfirst-logo|--scriptfirst-diag|--scriptfirst-diag-modeclock|--bootgui-scriptfirst|--bootgui-hpd-delay] [--selector-logo] [--clean]
+Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu|--scriptfirst-logo|--scriptfirst-diag|--scriptfirst-diag-modeclock|--bootgui-scriptfirst|--bootgui-hpd-delay|--logo-delay-diag] [--selector-logo] [--clean]
 
 Environment overrides:
   SOURCE_DIR       Existing local vendor tree. Default:
@@ -108,6 +108,9 @@ while [ "$#" -gt 0 ]; do
       ;;
     --bootgui-hpd-delay)
       mode=bootgui-hpd-delay
+      ;;
+    --logo-delay-diag)
+      mode=logo-delay-diag
       ;;
     --selector-logo)
       mode=bootmenu
@@ -178,7 +181,7 @@ mkdir -p "$artifact_dir/lichee-chip/orangepi4pro/bin" "$artifact_dir/lichee-plat
 
 make "${make_common[@]}" "$defconfig"
 
-if [ "$mode" = bootmenu ] || [ "$mode" = scriptfirst-logo ] || [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ] || [ "$mode" = bootgui-scriptfirst ] || [ "$mode" = bootgui-hpd-delay ]; then
+if [ "$mode" = bootmenu ] || [ "$mode" = scriptfirst-logo ] || [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ] || [ "$mode" = bootgui-scriptfirst ] || [ "$mode" = bootgui-hpd-delay ] || [ "$mode" = logo-delay-diag ]; then
   if [ ! -r "$bootmenu_patch" ]; then
     printf 'ERROR: bootmenu source patch not readable: %s\n' "$bootmenu_patch" >&2
     exit 1
@@ -325,6 +328,38 @@ if [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ]; t
     "$work_dir/drivers/video/drm/sunxi_drm_drv.c" \
     || {
       printf 'ERROR: DRM diagnostic patch did not apply cleanly\n' >&2
+      exit 1
+    }
+  make "${make_common[@]}" olddefconfig
+fi
+
+if [ "$mode" = logo-delay-diag ]; then
+  for patch in \
+    "$display_diag_patch" \
+    "$hdmi_diag_patch" \
+    "$bootgui_hpd_delay_patch"; do
+    if [ ! -r "$patch" ]; then
+      printf 'ERROR: logo-delay diagnostic patch not readable: %s\n' "$patch" >&2
+      exit 1
+    fi
+    git -C "$work_dir" apply --recount "$patch"
+  done
+  grep -q 'sunxi_drm_env' \
+    "$work_dir/drivers/video/drm/sunxi_drm_drv.c" \
+    || {
+      printf 'ERROR: DRM env diagnostic patch did not apply cleanly\n' >&2
+      exit 1
+    }
+  grep -q 'sunxi_hdmi_env' \
+    "$work_dir/drivers/video/drm/sunxi_drm_hdmi.c" \
+    || {
+      printf 'ERROR: HDMI env diagnostic patch did not apply cleanly\n' >&2
+      exit 1
+    }
+  grep -q 'waiting 5 seconds before sunxi_show_logo' \
+    "$work_dir/drivers/video/drm/sunxi_drm_drv.c" \
+    || {
+      printf 'ERROR: sunxi_show_logo HPD delay patch did not apply cleanly\n' >&2
       exit 1
     }
   make "${make_common[@]}" olddefconfig

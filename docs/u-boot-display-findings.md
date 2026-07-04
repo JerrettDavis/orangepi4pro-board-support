@@ -1715,3 +1715,45 @@ delivering a valid visible signal until Linux later performs its full
   during the 15-second U-Boot logo hold. The boot script should still reach
   `bootchooser=uboot-logo-preinit-ok` before extlinux boots the default NVMe
   Ubuntu entry.
+- Reboot result: failed visually. The board booted back to NVMe Ubuntu, but
+  the display stayed black/no-signal until Linux/desktop. The running kernel
+  command line reported `bootchooser=extlinux-legacy-nvme`; the extlinux path
+  does not preserve the U-Boot logo diagnostics, so this test did not capture
+  whether `sunxi_show_logo()` reached the HDMI locked state.
+
+2026-07-04 delayed logo plus passive HDMI/DRM diagnostics:
+
+- Rationale: the delay-only package still produced no visible bootloader image,
+  and extlinux overwrote the U-Boot diagnostic marker. This package keeps the
+  same delayed factory-logo path but also includes only passive
+  `sunxi_drm_env` and `sunxi_hdmi_env` commands. The staged boot script uses
+  `selector_diag_force_bootm=true` for one reboot so those diagnostics survive
+  into `/proc/cmdline`.
+- Build command:
+  `scripts/build-vendor-uboot.sh --logo-delay-diag --clean`
+- Build artifact:
+  `.build/u-boot/artifacts/logo-delay-diag/u-boot-sun60iw2p1.bin`
+- Build artifact SHA-256:
+  `b6d35454586a5bb634fd9a899d567837b106493be04d7273e73b9f51beb39466`
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_nvme-scriptfirst-logo-delay-diag.fex`
+- Package SHA-256:
+  `17c107db643f858b289e600abed5ad9aee3edd0949f1a2a7fb381bebd07caf2a`
+- U-Boot item SHA-256:
+  `b6d35454586a5bb634fd9a899d567837b106493be04d7273e73b9f51beb39466`
+- SD backup before install:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T165041Z.bin`
+- Backup SHA-256:
+  `f0ba7e5ca7c0d40acd12b1986ffcf00e0041cf1b0f9c7c78639e5e3a523f5de9`
+- Installed-slot validation: the SD TOC1 slot at `bs=8192 skip=2050`
+  byte-matched package SHA
+  `17c107db643f858b289e600abed5ad9aee3edd0949f1a2a7fb381bebd07caf2a`.
+- Safety validation: `scripts/validate-sunxi-logo-delay-package.sh
+  --require-diag` requires the delayed embedded-logo path and the passive
+  HDMI/DRM diagnostic commands. The package still excludes the known-unsafe
+  RX-sense wait, full DRM reinit, post-logo HDMI retry, stale-logo recovery,
+  file-backed `boot1.bmp`, and high-contrast selector payload strings.
+- Expected reboot evidence: if the screen is still black, `/proc/cmdline`
+  should include `bootchooser=uboot-logo-preinit-ok` plus `opi_logo_hdmi=...`
+  and `opi_logo_drm=...`, giving the U-Boot-side HDMI/DRM state at the failed
+  visual point.

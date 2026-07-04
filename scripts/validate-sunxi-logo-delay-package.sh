@@ -3,13 +3,14 @@ set -euo pipefail
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 package=
+require_diag=false
 
 usage() {
   cat <<'USAGE'
 Validate a script-first Orange Pi 4 Pro TOC1 package with delayed sunxi_show_logo.
 
 Usage:
-  scripts/validate-sunxi-logo-delay-package.sh --package PACKAGE
+  scripts/validate-sunxi-logo-delay-package.sh --package PACKAGE [--require-diag]
 
 This validator is file-only. It checks that the package keeps the vendor
 embedded-logo path, scans boot scripts before extlinux, includes the
@@ -23,6 +24,9 @@ while [ "$#" -gt 0 ]; do
     --package)
       package=${2:-}
       shift
+      ;;
+    --require-diag)
+      require_diag=true
       ;;
     -h|--help)
       usage
@@ -49,7 +53,7 @@ done
 
 "$repo_root/scripts/sunxi-toc1-package.py" inspect "$package" >/dev/null
 
-python3 - "$repo_root" "$package" <<'PY'
+python3 - "$repo_root" "$package" "$require_diag" <<'PY'
 from pathlib import Path
 import importlib.util
 import hashlib
@@ -57,6 +61,7 @@ import sys
 
 repo_root = Path(sys.argv[1])
 package_path = Path(sys.argv[2])
+require_diag = sys.argv[3] == "true"
 
 spec = importlib.util.spec_from_file_location(
     "sunxi_toc1_package",
@@ -93,6 +98,17 @@ for needle, label in required.items():
     if needle not in uboot:
         raise SystemExit(f"missing {label}")
 
+if require_diag:
+    diag_required = {
+        b"sunxi_drm_env": "DRM env diagnostic command",
+        b"sunxi_hdmi_env": "HDMI env diagnostic command",
+        b"opi_drm_diag": "DRM diagnostic environment marker",
+        b"opi_hdmi_diag": "HDMI diagnostic environment marker",
+    }
+    for needle, label in diag_required.items():
+        if needle not in uboot:
+            raise SystemExit(f"missing {label}")
+
 for forbidden in (
     b"dw_phy_wait_rxsense",
     b"sunxi_drm reinit",
@@ -109,5 +125,6 @@ print(f"package={package_path}")
 print(f"sha256={hashlib.sha256(package.data).hexdigest()}")
 print(f"u_boot_sha256={hashlib.sha256(uboot).hexdigest()}")
 print(f"u_boot_length={len(uboot)}")
+print(f"require_diag={str(require_diag).lower()}")
 print("sunxi_show_logo delay package validation passed")
 PY
