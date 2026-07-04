@@ -1001,6 +1001,33 @@ delivering a valid visible signal until Linux later performs its full
   `sunxi_hdmi_env`, and script-first `scan_dev_for_boot`; they do not include
   `sunxi_drm reinit`.
 
+2026-07-04 HDMI20 pattern retest with diagnostic-capable package:
+
+- Control result: with
+  `boot_package_vendor-sd-scriptfirst.fex`
+  (`77ef94aee8f8a6ec27d130822b70187fbf4316773d7ae5d59150e9027c654670`),
+  the staged `sunxi_hdmi20 pattern` script reached Linux with
+  `bootchooser=uboot-visual-hdmi20-pattern-fail`, but all DRM/HDMI diagnostic
+  variables were missing or unset. The stock script-first package does not
+  contain `sunxi_hdmi20`, `sunxi_drm_env`, or `sunxi_hdmi_env`.
+- Installed package for next reboot:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-busclock-720p.fex`
+- Package SHA-256:
+  `0a7a82b76e83cbb612c145c8f9414bb7dc7b4a5ce0c533c9cf002c4880337182`
+- U-Boot item SHA-256:
+  `50c3195cd076c8c8c3fedd596ecfc4fe034a505e7e50e8647b0a1acb426b622a`
+- Safety: package strings contain script-first `boot.scr`, `sunxi_hdmi20`,
+  `sunxi_drm_env`, `sunxi_hdmi_env`, `opi_hdmi_diag`, and `opi_drm_diag`;
+  they do not contain `sunxi_drm reinit` and do not match the two blocked
+  recovery-required package hashes.
+- Install evidence: `scripts/install-sd-boot-package.sh` backed up the
+  previous SD bootloader slot to
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T030311Z.bin`
+  and verified the written SD TOC1 slot by readback.
+- Next expected evidence: `bootchooser=uboot-visual-hdmi20-pattern-ok` or
+  `bootchooser=uboot-visual-hdmi20-pattern-fail` plus populated
+  `opi_pre_*`, `opi_pat_hdmipat`, and `opi_post_*` diagnostics.
+
 2026-07-04 BootGUI `logo` command diagnostic:
 
 - Current installed SD TOC1 remains the stock vendor SD U-Boot with only the
