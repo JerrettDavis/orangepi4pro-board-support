@@ -1134,6 +1134,14 @@ delivering a valid visible signal until Linux later performs its full
 - Expected reboot evidence: `/proc/cmdline` should include
   `opi_logo_recover=post-retry-...`; visual success would be the bootloader
   splash/selector becoming visible before Linux starts.
+- Reboot result: unsafe. The board did not complete normal startup and required
+  external SD recovery from another machine. After recovery the system booted
+  NVMe through `bootchooser=extlinux-legacy-nvme` without the U-Boot
+  `opi_logo_*` diagnostic path. The package SHA
+  `dac4949d4e5ad3fdb8c3db0bf16811f2ce8ed4948c242ffeebe3c052d940f7a1`
+  is now blocked by `scripts/install-sd-boot-package.sh`, and patch
+  `0033-force-post-logo-hdmi-reinit.patch` is not applied by the default
+  `--scriptfirst-diag-modeclock` build path.
 
 2026-07-03 forced cyberdeck-mode plus HDMI clock-only DTB package:
 
