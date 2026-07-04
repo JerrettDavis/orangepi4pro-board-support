@@ -92,20 +92,28 @@ index 8c5ad6ab4d..92f1bc0ef1 100644
 +{
 +	char diag[256];
 +	u32 de_base = 0x05000000;
++	u32 tcon3_base = 0x05730000;
 +	u32 tcon4_base = 0x05731000;
 +	u32 tcon_top_base = 0x05720000;
 +
 +	snprintf(diag, sizeof(diag),
-+		 "de=top%08x,bld%08x,ovl%08x,csc%08x,gam%08x,tcon=%08x_%08x_%08x_%08x,top=%08x_%08x_%08x",
++		 "de=%08x_%08x_%08x,t3=%08x_%08x_%08x_%08x_%08x_%08x_%08x_%08x_%08x_%08x,t4=%08x_%08x_%08x,top=%08x_%08x_%08x",
 +		 readl((void __iomem *)(uintptr_t)(de_base + 0x000000)),
 +		 readl((void __iomem *)(uintptr_t)(de_base + 0x281000)),
 +		 readl((void __iomem *)(uintptr_t)(de_base + 0x101000)),
-+		 readl((void __iomem *)(uintptr_t)(de_base + 0x100800)),
-+		 readl((void __iomem *)(uintptr_t)(de_base + 0x289000)),
++		 readl((void __iomem *)(uintptr_t)(tcon3_base + 0x000)),
++		 readl((void __iomem *)(uintptr_t)(tcon3_base + 0x004)),
++		 readl((void __iomem *)(uintptr_t)(tcon3_base + 0x088)),
++		 readl((void __iomem *)(uintptr_t)(tcon3_base + 0x08c)),
++		 readl((void __iomem *)(uintptr_t)(tcon3_base + 0x090)),
++		 readl((void __iomem *)(uintptr_t)(tcon3_base + 0x098)),
++		 readl((void __iomem *)(uintptr_t)(tcon3_base + 0x09c)),
++		 readl((void __iomem *)(uintptr_t)(tcon3_base + 0x0a0)),
++		 readl((void __iomem *)(uintptr_t)(tcon3_base + 0x0a4)),
++		 readl((void __iomem *)(uintptr_t)(tcon3_base + 0x0a8)),
 +		 readl((void __iomem *)(uintptr_t)(tcon4_base + 0x000)),
-+		 readl((void __iomem *)(uintptr_t)(tcon4_base + 0x010)),
-+		 readl((void __iomem *)(uintptr_t)(tcon4_base + 0x040)),
-+		 readl((void __iomem *)(uintptr_t)(tcon4_base + 0x100)),
++		 readl((void __iomem *)(uintptr_t)(tcon4_base + 0x004)),
++		 readl((void __iomem *)(uintptr_t)(tcon4_base + 0x090)),
 +		 readl((void __iomem *)(uintptr_t)(tcon_top_base + 0x000)),
 +		 readl((void __iomem *)(uintptr_t)(tcon_top_base + 0x010)),
 +		 readl((void __iomem *)(uintptr_t)(tcon_top_base + 0x020)));

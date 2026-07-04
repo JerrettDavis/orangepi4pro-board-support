@@ -1030,6 +1030,44 @@ delivering a valid visible signal until Linux later performs its full
   `de=...`, `tcon=...`, and `top=...` register groups. Visual success remains
   a visible bootloader splash or selector before Linux starts.
 
+- Reboot result: Linux reached NVMe with
+  `bootchooser=uboot-visual-hdmi20-pattern-ok` and U-Boot recorded the new
+  `opi_post_de=...` field, but this first raw diagnostic sampled TCON4
+  (`0x05731000`) only. The packaged U-Boot DTB routes HDMI through
+  `tcon3@5730000`, while `tcon4@5731000` is the EDP path. Linux live
+  register reads after the visible mode set show the active HDMI TCON window at
+  `0x05730000`, with nonzero registers at offsets `0x000`, `0x004`,
+  `0x088`, `0x08c`, `0x090`, `0x098`, `0x09c`, `0x0a0`, `0x0a4`, `0x0a8`,
+  and `0x0fc`. The next package corrects `sunxi_de_env` to report explicit
+  TCON3 and TCON4 windows.
+
+2026-07-04 TCON3/TCON4 corrected raw diagnostic package:
+
+- Build command:
+  `APPLY_DISPLAY_MODE_PATCH=true scripts/build-vendor-uboot.sh --bootmenu --clean`
+- Build artifact:
+  `.build/u-boot/artifacts/bootmenu/u-boot-sun60iw2p1.bin`
+- Build artifact SHA-256:
+  `91b0bc3367142cb25c7dcc48bd4408feb1cfe88ff4121f8b143ce2b910d7aecc`
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-tcon3diag-hdmi-pattern-1024x600.fex`
+- Package SHA-256:
+  `0381eff0a7a65ee407856b6ec9a10e4a0c82c8a4c3aa64f4f008b4b26024293f`
+- U-Boot item SHA-256:
+  `92334f2f929e1c8867902081c64a0335cd984be3c1189899c8500d8541a4ebb7`
+- SD TOC1 backup before install:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T041753Z.bin`
+- Backup SHA-256:
+  `7188d42ff484a2c9ee7d9318ccae78bdb266c19438358c3a1cb710315c9e6a4a`
+- Change: `sunxi_de_env` now records `t3=...` from `0x05730000`, `t4=...`
+  from `0x05731000`, and selected TCON TOP values. This should distinguish a
+  real TCON3 scanout failure from the earlier TCON4-only false negative.
+- Expected reboot evidence: `/proc/cmdline` should include
+  `bootchooser=uboot-visual-hdmi20-pattern-ok` and `opi_post_de=...t3=...`.
+  If TCON3 is zero in U-Boot but nonzero under Linux, the fix path is the
+  U-Boot TCON3 mode-init/open sequence. If TCON3 is already nonzero in U-Boot,
+  the remaining failure is downstream of TCON scanout.
+
 2026-07-04 current HDMI-chain 720p pattern package:
 
 - Build command:
