@@ -1,5 +1,30 @@
 # U-Boot Display Findings
 
+2026-07-04 recovery baseline:
+
+- The board is booting NVMe Ubuntu through extlinux with
+  `bootchooser=extlinux-legacy-nvme`.
+- The active SD bootloader slot byte-matches the vendor NVMe package:
+  `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex`.
+- Active package SHA-256:
+  `e626234a6eb9420ac29f515dd6acc543e7f0876e3dc086eec2fe221a50cc54f2`
+- The stock vendor SD package is:
+  `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package.fex`.
+- Stock SD package SHA-256:
+  `7a2661b080f5c5d8ba32566bc79f1ccfbfb8912a4a5c0c1a4856a9380542c807`
+- Orange Pi's `/usr/lib/u-boot/platform_install.sh` writes
+  `boot0_sdcard.fex` and `boot_package.fex` for SD installs. It uses the NVMe
+  package only for the MTD/SPI path. Therefore the next bounded display test is
+  to restore `boot_package.fex` to the SD bootloader slot while keeping the SD
+  extlinux menu default pointed at the NVMe root.
+- The vendor NVMe package plus mirrored `/boot/bootlogo.bmp`, `/boot/boot.bmp`,
+  and `/boot/boot1.bmp` did not restore a pre-OS bootloader image. It did boot
+  NVMe successfully, so the failure mode remains "invisible bootloader display"
+  rather than "failed control flow".
+- The 2026-07-04 desktop error popup was a stale LightDM crash report created
+  during shutdown. It is tracked separately from U-Boot display work unless a
+  fresh crash appears after the next test.
+
 Captured 2026-07-02 after the video-first selector test hung before Linux.
 
 2026-07-03 TOP PHY auto-calculation candidate:
