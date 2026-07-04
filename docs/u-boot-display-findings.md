@@ -1001,6 +1001,43 @@ delivering a valid visible signal until Linux later performs its full
   `sunxi_hdmi_env`, and script-first `scan_dev_for_boot`; they do not include
   `sunxi_drm reinit`.
 
+2026-07-04 bus-clock HDMI20 pattern result:
+
+- Installed package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-busclock-720p.fex`
+- Package SHA-256:
+  `0a7a82b76e83cbb612c145c8f9414bb7dc7b4a5ce0c533c9cf002c4880337182`
+- Reboot result: Linux reached NVMe with
+  `bootchooser=uboot-visual-hdmi20-pattern-fail`. Unlike the stock
+  script-first control, U-Boot populated diagnostics:
+  `opi_pre_drm=n1,type=11,conn=hdmi-a,init=1,en=1,bl=1,mode=1280x720,clk=74250,...`,
+  `opi_pre_hdmi=fast1,hpd1,clk1,out1,drm1,mode1,tcon24000000,hdmi74250000,pix74250,tmds74250,toplock1,...`,
+  and matching `opi_post_*` values. This proves the diagnostic package ran and
+  saw HPD, HDMI output, a 74.25 MHz HDMI clock, and top PHY lock before Linux.
+- Remaining gap: `opi_pat_hdmipat=unset` because this older bus-clock package
+  does not carry the HDMI pattern-status export patch. The screen still did
+  not present a visible pre-Linux selector.
+
+2026-07-04 pattern-status 1024x600 handoff:
+
+- Installed package for next reboot:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-patternstatus-1024x600.fex`
+- Package SHA-256:
+  `2b79a35b9182a63a4304cb89aa1b1178fe214abe03050923b212a06e05a24abd`
+- U-Boot item SHA-256:
+  `63d7076c480805e6dbead46548ef1191c616337743ca9798c0f15afa29c57302`
+- Safety/capability strings: contains `boot.scr`, `sunxi_hdmi20`,
+  `sunxi_drm_env`, `sunxi_hdmi_env`, `opi_hdmi_pattern_diag`,
+  `opi_hdmi_diag`, and `1024x600`; does not contain `sunxi_drm reinit` or
+  `full hdmi reinit`.
+- Install evidence: `scripts/install-sd-boot-package.sh` backed up the
+  previous SD bootloader slot to
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T031045Z.bin`
+  and verified the new SD TOC1 slot by readback.
+- Expected evidence: `opi_pat_hdmipat=req1,...` should replace the previous
+  `unset` value so the next iteration can distinguish a failed HDMI pattern
+  command from a still-invisible but programmed HDMI frame-composer path.
+
 2026-07-04 HDMI20 pattern retest with diagnostic-capable package:
 
 - Control result: with
