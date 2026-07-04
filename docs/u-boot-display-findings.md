@@ -1889,3 +1889,23 @@ delivering a valid visible signal until Linux later performs its full
 - Expected reboot evidence: with stock boot0, stock U-Boot, stock script-first
   scan order, and a restored boot-resource area, the factory bootloader splash
   should reappear before the OS loader.
+- Reboot result: failed visually. The restored boot-resource area survived and
+  validates after reboot, but the HDMI display still stayed black before Linux.
+
+2026-07-04 stock U-Boot colorbar visual test:
+
+- Rationale: stock U-Boot has no `bootmenu`, but it does include
+  `sunxi_drm colorbar`, `vidconsole`, `bmp display`, `sunxi_show_logo`,
+  `booti`, and `bootm`. Since the restored boot-resource logo path still did
+  not render, the next test uses the stock `sunxi_drm colorbar 1` command to
+  ask the vendor display stack for a hardware-generated pattern, then boots
+  NVMe through the known legacy `bootm` path.
+- Staged command:
+  `/home/orangepi/orangepi4pro-images/scripts/stage-uboot-visual-test.sh --test colorbar --hold 20 --sd-boot-dir /mnt/opisd-rw/boot`
+- Staged environment on `/boot`, `/boot/efi`, and SD `/boot`:
+  `selector_visual_test=colorbar`, `selector_visual_hold=20`,
+  `extlinux_first=false`, `selector_logo_preinit=false`,
+  `selector_diag_force_bootm=false`.
+- Expected reboot evidence: a 20-second bootloader-stage colorbar before Linux,
+  followed by NVMe Ubuntu with `bootchooser=uboot-visual-colorbar-ok` or
+  `bootchooser=uboot-visual-colorbar-fail`.
