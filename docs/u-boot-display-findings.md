@@ -1909,3 +1909,35 @@ delivering a valid visible signal until Linux later performs its full
 - Expected reboot evidence: a 20-second bootloader-stage colorbar before Linux,
   followed by NVMe Ubuntu with `bootchooser=uboot-visual-colorbar-ok` or
   `bootchooser=uboot-visual-colorbar-fail`.
+- Reboot result: U-Boot did execute the branch and returned success, but the
+  HDMI display still stayed black before Linux. `/proc/cmdline` contained
+  `bootchooser=uboot-visual-colorbar-ok`; passive diagnostics were unavailable
+  in stock U-Boot (`opi_pre_drm_diag=missing`,
+  `opi_pre_hdmi=diag-missing`, `opi_post_drm_diag=missing`,
+  `opi_post_hdmi=diag-missing`).
+
+2026-07-04 stock SD factory U-Boot package test:
+
+- Rationale: `boot_package_a733_nvme.fex` may not be the exact U-Boot payload
+  that displayed the original factory SD splash. The next test switches to the
+  standard vendor SD package `/usr/lib/.../boot_package.fex`, with only the
+  length-preserving script-first scan-order patch.
+- Prepared package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_vendor-sd-scriptfirst-stockvisual.fex`
+- Package SHA-256:
+  `77ef94aee8f8a6ec27d130822b70187fbf4316773d7ae5d59150e9027c654670`
+- U-Boot item SHA-256:
+  `94e5aa1cdebde42ce773f8d476fe78891cc61ad7e9e839d2554d738a549d55f5`
+- Validation: `scripts/validate-stock-bootgui-package.sh` passed. The package
+  has script-first distro scan, `boot_targets=mmc0 mmc2 usb0`, stock
+  `sunxi_show_logo`, stock `sunxi_drm colorbar`, and boot-resource/logo
+  strings. It does not include custom rebuilt U-Boot diagnostics.
+- SD backup before install:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T172937Z.bin`
+- Backup SHA-256:
+  `49406a05fef3291f0e2320460e4a937ee50f098c916e987795e4cef51f4c07f1`
+- Expected reboot evidence: if the original factory splash depended on the SD
+  package rather than the NVMe package, the bootloader image/colorbar should
+  become visible before Linux. The staged boot script still runs
+  `sunxi_drm colorbar 1` for 20 seconds and should boot NVMe with
+  `bootchooser=uboot-visual-colorbar-ok`.
