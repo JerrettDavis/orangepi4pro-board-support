@@ -1075,6 +1075,46 @@ delivering a valid visible signal until Linux later performs its full
   visual output will narrow the remaining issue to post-enable signal/display
   visibility.
 
+2026-07-04 pattern-reconfigure result:
+
+- Installed package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-pattern-reconfig-1024x600.fex`
+- Package SHA-256:
+  `5e1e7209d7fe8535c998c640593f280a6b8f94f7afc4115cb11218189687d92d`
+- Reboot result: Linux reached NVMe with
+  `bootchooser=uboot-visual-hdmi20-pattern-ok` and
+  `opi_pat_hdmipat=req1,reconfig0,tcon0,force01,rff,g00,b00`.
+  The bounded `_sunxi_drv_hdmi_enable()` returned success before the HDMI20
+  forced-red pattern. U-Boot also reported the top-PHY PDDQ bit cleared
+  (`top0_00000015`) but the direct DesignWare HDMI core diagnostics remained
+  zero: `phy00,stat00,rst00,lock00,vid00,gcp00`.
+- If no red pre-Linux image was visible, the next test applies the Linux-like
+  frame-composer iteration patch and unconditional DesignWare register reads
+  so the diagnostic path can distinguish stale software state from an actually
+  idle HDMI core.
+
+2026-07-04 frame-composer iteration handoff:
+
+- Installed package for next reboot:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-fciter-1024x600.fex`
+- Package SHA-256:
+  `a6ff4344d16002f4274a30fee0c4ed861fb6e4e1cedd9251a810ab38e69a2db0`
+- U-Boot item SHA-256:
+  `531c73cf5f7ace30e2dfba95e52a0beaa3beccf830984f92d5a259649967e556`
+- Source patch:
+  `configs/u-boot/0019-sync-linux-hdmi-fc-iteration-and-diag.patch`
+- Safety/capability strings: contains `boot.scr`, `sunxi_hdmi20`,
+  `sunxi_drm_env`, `sunxi_hdmi_env`, `opi_hdmi_pattern_diag`,
+  `opi_hdmi_pattern_reconfig`, `opi_hdmi_diag`, and `1024x600`; does not
+  contain `sunxi_drm reinit` or `full hdmi reinit`.
+- Install evidence: `scripts/install-sd-boot-package.sh` backed up the
+  previous SD bootloader slot to
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T031946Z.bin`
+  and verified the new SD TOC1 slot by readback.
+- Expected evidence: the same `opi_pat_hdmipat=req1,reconfig0,...` path should
+  boot, with post-reconfigure HDMI diagnostics showing whether the
+  DesignWare core registers remain zero or move toward Linux's working state.
+
 2026-07-04 HDMI20 pattern retest with diagnostic-capable package:
 
 - Control result: with
