@@ -1998,3 +1998,48 @@ delivering a valid visible signal until Linux later performs its full
   vidconsole text and/or the 20-second colorbar. Linux should boot NVMe with
   `bootchooser=uboot-visual-colorbar-ok` and passive DRM/HDMI diagnostics
   present instead of `diag-missing`.
+- Reboot result: failed visually. Linux reached NVMe with
+  `bootchooser=uboot-visual-colorbar-ok`, proving the script path still ran,
+  but the display stayed black until desktop. The new passive diagnostics show
+  the actual U-Boot display state:
+  `mode=1920x1080,clk=148500,fbw=1920,fbh=1080`, while HDMI reported
+  `tcon0,hdmi24000000,pix148500,tmds148500,phy00,stat00,lock00`. This means
+  U-Boot selected the 1080p fallback and did not program the HDMI TV/link
+  clock into a usable state for the cyberdeck panel.
+
+2026-07-04 early delay plus HDMI clock/native-mode candidate:
+
+- New hypothesis: the early-delay package proved the display state is captured
+  early, but it still used U-Boot's 1080p default and stale 24 MHz HDMI clock.
+  A file-only DTB package attempt with
+  `prepare-vendor-sd-hdmi-power-package.sh --fast-1024x600 --force-route`
+  failed safely before install because the patched embedded DTB grew from
+  42974 to 43260 bytes and would overlap non-terminal U-Boot item data.
+- Source-built candidate:
+  `scripts/build-vendor-uboot.sh --early-display-clockdiag --clean`
+- Upstream source:
+  `https://github.com/orangepi-xunlong/u-boot-orangepi.git`,
+  branch `v2018.05-sun60iw2`, commit
+  `b791be842935b27268ae3d00e943a9075495f30a`.
+- Patch set: script-first distro scan order, passive `sunxi_drm_env`,
+  passive `sunxi_hdmi_env`, 1024x600 default mode, use selected HDMI mode
+  clock when the TCON rate is stale, enable the HDMI bus clock, program the
+  HDMI TV-clock fallback, passive top-PHY diagnostics, and the 8-second delay
+  before `initr_sunxi_display()`. It still excludes the known-risky DRM
+  reinit, forced post-logo HDMI reinit, and RX-sense stale retry patches.
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-early-display-clockdiag.fex`
+- Package SHA-256:
+  `925b6d123098b4d434a3c850cd69128a45390117039408a5b93d8f546abd4cce`
+- U-Boot item SHA-256:
+  `1b4cb498733e59fd5a512ad7f9f32b46956f49667f5bc8228b5f6fdbcb8365df`
+- Recovery backup:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T175522Z.bin`
+- Recovery backup SHA-256:
+  `988181e9e64a7bb3f30b5ad55b26e29995d14f47a07863abeb7cec5071df7998`
+- Expected deltas after reboot: `/proc/cmdline` should move from
+  `mode=1920x1080` and `hdmi24000000` toward `mode=1024x600` and a programmed
+  HDMI clock near `49000000`. It should also include the expanded
+  `top20_`/`top24_`/`top28_`/`top2c_`/`top30_`/`top40_` passive top-PHY
+  diagnostics. The visual pass condition remains visible bootloader-stage
+  output before Linux.

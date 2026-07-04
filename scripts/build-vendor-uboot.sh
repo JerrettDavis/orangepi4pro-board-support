@@ -59,7 +59,7 @@ usage() {
   cat <<'USAGE'
 Build the Orange Pi vendor U-Boot tree for sun60iw2 without flashing anything.
 
-Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu|--scriptfirst-logo|--scriptfirst-diag|--scriptfirst-diag-modeclock|--bootgui-scriptfirst|--bootgui-hpd-delay|--logo-delay-diag|--early-display-delay] [--selector-logo] [--clean]
+Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu|--scriptfirst-logo|--scriptfirst-diag|--scriptfirst-diag-modeclock|--bootgui-scriptfirst|--bootgui-hpd-delay|--logo-delay-diag|--early-display-delay|--early-display-clockdiag] [--selector-logo] [--clean]
 
 Environment overrides:
   SOURCE_DIR       Existing local vendor tree. Default:
@@ -116,6 +116,9 @@ while [ "$#" -gt 0 ]; do
       ;;
     --early-display-delay)
       mode=early-display-delay
+      ;;
+    --early-display-clockdiag)
+      mode=early-display-clockdiag
       ;;
     --selector-logo)
       mode=bootmenu
@@ -187,7 +190,7 @@ mkdir -p "$artifact_dir/lichee-chip/orangepi4pro/bin" "$artifact_dir/lichee-plat
 
 make "${make_common[@]}" "$defconfig"
 
-if [ "$mode" = bootmenu ] || [ "$mode" = scriptfirst-logo ] || [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ] || [ "$mode" = bootgui-scriptfirst ] || [ "$mode" = bootgui-hpd-delay ] || [ "$mode" = logo-delay-diag ] || [ "$mode" = early-display-delay ]; then
+if [ "$mode" = bootmenu ] || [ "$mode" = scriptfirst-logo ] || [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ] || [ "$mode" = bootgui-scriptfirst ] || [ "$mode" = bootgui-hpd-delay ] || [ "$mode" = logo-delay-diag ] || [ "$mode" = early-display-delay ] || [ "$mode" = early-display-clockdiag ]; then
   if [ ! -r "$bootmenu_patch" ]; then
     printf 'ERROR: bootmenu source patch not readable: %s\n' "$bootmenu_patch" >&2
     exit 1
@@ -336,6 +339,41 @@ if [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ]; t
       printf 'ERROR: DRM diagnostic patch did not apply cleanly\n' >&2
       exit 1
     }
+  make "${make_common[@]}" olddefconfig
+fi
+
+if [ "$mode" = early-display-clockdiag ]; then
+  for patch in \
+    "$display_diag_patch" \
+    "$hdmi_diag_patch" \
+    "$display_mode_patch" \
+    "$hdmi_mode_clock_patch" \
+    "$hdmi_bus_clock_patch" \
+    "$hdmi_tv_clock_fallback_patch" \
+    "$hdmi_passive_top_phy_diag_patch" \
+    "$early_display_delay_patch"; do
+    if [ ! -r "$patch" ]; then
+      printf 'ERROR: early-display-clockdiag patch not readable: %s\n' "$patch" >&2
+      exit 1
+    fi
+    git -C "$work_dir" apply --recount "$patch"
+  done
+  for marker in \
+    sunxi_drm_env \
+    sunxi_hdmi_env \
+    '1024x600' \
+    'mode_rate && (clk_rate == 0 || clk_rate == 24000000)' \
+    'hdmi drv bus clock enable' \
+    opi_hdmi_tv_clk \
+    top20_ \
+    'mdelay(8000)'; do
+    if ! grep -q "$marker" "$work_dir/drivers/video/drm/sunxi_drm_drv.c" \
+      && ! grep -q "$marker" "$work_dir/drivers/video/drm/sunxi_drm_hdmi.c" \
+      && ! grep -q "$marker" "$work_dir/board/sunxi/board_common.c"; then
+      printf 'ERROR: early-display-clockdiag marker missing: %s\n' "$marker" >&2
+      exit 1
+    fi
+  done
   make "${make_common[@]}" olddefconfig
 fi
 
