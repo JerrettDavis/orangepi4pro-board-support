@@ -1192,6 +1192,43 @@ delivering a valid visible signal until Linux later performs its full
 - Expected evidence: richer `top20_...top40_...` diagnostics plus whether
   `MC_LOCKONCLOCK` moves from `lock70` toward Linux's visible `lock79`.
 
+2026-07-04 MC-clock result:
+
+- Installed package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-mcclk-1024x600.fex`
+- Package SHA-256:
+  `4d15d7c88b17aa1114aa99175ad489a4d3a36142430736fda2a4b113cb1e1844`
+- Reboot result: Linux reached NVMe with
+  `bootchooser=uboot-visual-hdmi20-pattern-ok`. The richer top-PHY fields now
+  matched the Linux PLL values:
+  `top20_e8193000,top24_00000080,top28_00035000,top2c_00000000,top30_30000000,top40_00000001`.
+  The HDMI core still reported `phy2e,stat03,rst00,lock70,vid58,gcp01`, so
+  the MC-clock patch did not move `MC_LOCKONCLOCK` toward the later
+  Linux-visible `lock79` state.
+
+2026-07-04 TCON-format handoff:
+
+- Installed package for next reboot:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-tconfmt-1024x600.fex`
+- Package SHA-256:
+  `1476e41aeae6bfeff49128146bfc5515beb03e3e2d83fad4c41bdf8d60ed6dec`
+- U-Boot item SHA-256:
+  `21b1fe5b5d03709d840b024d0d15ec96fe99a7e469c96189ed660a01b178fa5c`
+- Source patch:
+  `configs/u-boot/0024-pass-hdmi-format-to-tcon-reinit.patch`
+- Safety/capability strings: contains `boot.scr`, `sunxi_hdmi20`,
+  `sunxi_drm_env`, `sunxi_hdmi_env`, `opi_hdmi_pattern_diag`,
+  `opi_hdmi_pattern_reconfig`, `opi_hdmi_diag`, `fmt%u`, `sw%d`,
+  `top20_`, `dw hdmi mc enable all clock`, and `1024x600`; does not contain
+  `sunxi_drm reinit` or `full hdmi reinit`.
+- Install evidence: `scripts/install-sd-boot-package.sh` backed up the
+  previous SD bootloader slot to
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T032919Z.bin`
+  and verified the new SD TOC1 slot by readback.
+- Expected evidence: `opi_reinit_reinit` should include `fmt...` and `sw...`
+  fields, proving U-Boot passed the HDMI format and switch-enable values into
+  TCON init before the bounded red-pattern hold.
+
 2026-07-04 HDMI20 pattern retest with diagnostic-capable package:
 
 - Control result: with
