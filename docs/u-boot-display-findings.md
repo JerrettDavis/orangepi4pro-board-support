@@ -59,6 +59,15 @@
   copies `bootlogo.bmp`, `boot.bmp`, and `boot1.bmp` into that FAT image. The
   script defaults to dry-run and requires
   `ORANGEPI4PRO_ALLOW_BOOT_RESOURCE_WRITE=1 --yes` before writing.
+- Result after installing the boot-resource area: no bootloader splash was
+  visible, but the normal Ubuntu/Plymouth OS splash returned. Linux booted
+  through `bootchooser=extlinux-legacy-nvme`, the SD TOC1 slot still matched
+  `boot_package_vendor-sd-scriptfirst.fex`, and readback of sectors
+  40960-65535 still contained the expected `softw411` MBR and `boot-resource`
+  FAT image. Conclusion: missing resource partition was not sufficient to
+  restore the factory pre-OS image on the current boot path. Further work
+  needs a source-side U-Boot diagnostic that exports the exact
+  `load_bmp_logo()` and `display_logo()` return codes before extlinux.
 
 Captured 2026-07-02 after the video-first selector test hung before Linux.
 
