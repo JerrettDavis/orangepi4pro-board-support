@@ -2162,5 +2162,45 @@ delivering a valid visible signal until Linux later performs its full
 - Reboot result: unsafe. The board did not boot normally and required external
   WSL recovery. The recovered SD TOC1 slot now matches the vendor NVMe package
   `boot_package_a733_nvme.fex` (`e626234a6eb9420ac29f515dd6acc543e7f0876e3dc086eec2fe221a50cc54f2`).
-  Package `6aa7b8590cf7d2b7b259aa08326a43d342c7ce6b0d233bc3e4faf5cbb3e46cd1`
-  and the `sunxi_drm hdmi_recycle` command are now blocked by the installer.
+ Package `6aa7b8590cf7d2b7b259aa08326a43d342c7ce6b0d233bc3e4faf5cbb3e46cd1`
+ and the `sunxi_drm hdmi_recycle` command are now blocked by the installer.
+
+2026-07-04 early display HDMI second-pass candidate:
+
+- New hypothesis: Linux gets HDMI visible because it performs a second
+  disable/modeset/enable cycle after the first enable path, while U-Boot leaves
+  the SNPS PHY unlocked after its initial display bring-up. The unsafe recycle
+  command proved that a broad display-level recycle can hang this board, so this
+  candidate keeps the retry local to the HDMI enable function and only runs it
+  when `PHY_STAT0` and `MC_LOCKONCLOCK` still report an unlocked transmitter.
+- Source-built candidate:
+  `scripts/build-vendor-uboot.sh --early-display-secondpass --clean`
+- New source patch:
+  `configs/u-boot/0036-hdmi-enable-second-pass-if-unlocked.patch`
+- Patch behavior: after the first normal `_sunxi_drv_hdmi_enable()` call, read
+  HDMI PHY and MC lock status. If the transmitter is still unlocked, drop only
+  the HDMI/TCON clock path with `sunxi_tcon_mode_exit()` and
+  `_sunxi_drv_hdmi_clock_off()`, then rerun clock-on, TCON mode init, and normal
+  HDMI enable once. It does not add a boot-script command, call
+  `display_disable()`, wait for RX sense, or contain the blocked recycle path.
+- Artifact:
+  `.build/u-boot/artifacts/early-display-secondpass/u-boot-sun60iw2p1.bin`
+- Artifact SHA-256:
+  `a90c3c06324e7872e9cfceaf1605f75b29bd12588de8418fcdd33c54cfb47565`
+- Candidate package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-early-display-secondpass.fex`
+- Package SHA-256:
+  `496b9527adaa044d1bb4cbf3d9ccb5cde1353e4a5d1734e9934630cbf45f4eaf`
+- Validation result: `validate-boot-package-visual-path.sh --profile
+  script-first` passed. The package contains exactly one script-first scan
+  order, AW DRM `sunxi_show_logo`, `sunxi_drm_env`, `sunxi_hdmi_env`, TOP PHY
+  diagnostics, and the second-pass diagnostic strings. It does not contain
+  `sunxi_drm hdmi_recycle`, `sunxi_drm_hdmi_recycle`, or any currently blocked
+  unsafe package hash/string.
+- Intended next boot test: install this package to the SD TOC1 slot and stage a
+  bootloader-only `selector_visual_test=colorbar` hold for 20 seconds on both
+  NVMe `/boot` and SD `/boot`. Expected evidence is a visible U-Boot colorbar
+  before Linux, followed by NVMe Ubuntu with
+  `bootchooser=uboot-visual-colorbar-ok`. If the display remains black, the
+  cmdline HDMI diagnostics should still show whether the second pass changed
+  `phy`, `stat`, or `lock`.

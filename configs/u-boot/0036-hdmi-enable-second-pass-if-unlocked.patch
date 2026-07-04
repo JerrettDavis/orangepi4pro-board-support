@@ -1,0 +1,60 @@
+diff --git a/drivers/video/drm/sunxi_drm_hdmi.c b/drivers/video/drm/sunxi_drm_hdmi.c
+--- a/drivers/video/drm/sunxi_drm_hdmi.c
++++ b/drivers/video/drm/sunxi_drm_hdmi.c
+@@ -816,6 +816,10 @@ int _sunxi_drm_hdmi_enable(struct sunxi_drm_connector *conn,
+ 	struct disp_output_config disp_cfg;
+ 	int hw_id = sunxi_drm_crtc_get_hw_id(scrtc_state->crtc);
+ 	int ret = 0;
++	struct dw_hdmi_dev_s *dw = NULL;
++	u8 phy_stat0 = 0;
++	u8 mc_lockon = 0;
++	bool link_locked = false;
+ 
+ 	_sunxi_drv_hdmi_clock_on(hdmi);
+ 
+@@ -849,6 +853,43 @@ int _sunxi_drm_hdmi_enable(struct sunxi_drm_connector *conn,
+ 		return 0;
+ 	}
+ 
++	dw = &hdmi->hdmi_core.dw_hdmi;
++	if (dw && dw->sw_init) {
++		phy_stat0 = (u8)dw_read(PHY_STAT0);
++		mc_lockon = (u8)dw_read(MC_LOCKONCLOCK);
++		link_locked = (phy_stat0 & PHY_STAT0_TX_PHY_LOCK_MASK) &&
++			(mc_lockon & MC_LOCKONCLOCK_TCLK_MASK) &&
++			(mc_lockon & MC_LOCKONCLOCK_PCLK_MASK);
++	}
++
++	if (!link_locked) {
++		hdmi_wrn("hdmi first enable unlocked phy%02x lock%02x; second pass\n",
++			 phy_stat0, mc_lockon);
++
++		sunxi_tcon_mode_exit(hdmi->tcon_dev);
++		_sunxi_drv_hdmi_clock_off(hdmi);
++		mdelay(10);
++		_sunxi_drv_hdmi_clock_on(hdmi);
++		hdmi->hdmi_ctrl.drm_enable = 0x0;
++		hdmi->hdmi_ctrl.drm_mode_set = 0x0;
++		hdmi->hdmi_ctrl.drv_enable = 0x0;
++
++		ret = sunxi_tcon_mode_init(hdmi->tcon_dev, &disp_cfg);
++		if (ret != 0) {
++			hdmi_err("sunxi tcon hdmi second-pass mode init failed\n");
++			return 0;
++		}
++		ret = _sunxi_drv_hdmi_enable(hdmi);
++		if (ret != 0) {
++			hdmi_err("sunxi hdmi second-pass driver enable failed\n");
++			return 0;
++		}
++		if (dw && dw->sw_init) {
++			phy_stat0 = (u8)dw_read(PHY_STAT0);
++			mc_lockon = (u8)dw_read(MC_LOCKONCLOCK);
++		}
++		hdmi_wrn("hdmi second pass result phy%02x lock%02x\n",
++			 phy_stat0, mc_lockon);
++	}
++
+ 	hdmi->hdmi_ctrl.drm_enable = 0x1;
+ 	hdmi_inf("drm hdmi atomic enable done.\n");
+ 	return 0;
