@@ -1153,6 +1153,45 @@ delivering a valid visible signal until Linux later performs its full
   bounded wait or move toward the later Linux-visible RX-sense state. Visual
   success would be a visible red bootloader pattern before Linux.
 
+2026-07-04 RX-sense wait result:
+
+- Installed package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-rxsense-1024x600.fex`
+- Package SHA-256:
+  `59fe28f8c629ff194e413cc7dd2878c6a6aec7103744a0422a4a1c537576d3ff`
+- Reboot result: Linux reached NVMe with
+  `bootchooser=uboot-visual-hdmi20-pattern-ok`, but the HDMI core state stayed
+  at `phy2e,stat03,rst00,lock70,vid58,gcp01`. The bounded RX-sense wait did
+  not move `PHY_STAT0` toward the later Linux-visible `0xf3` state.
+- Interpretation: the next forward package should not repeat RX wait alone.
+  Use the cumulative MC-clock candidate because it adds top-PHY PLL diagnostics
+  and Linux-like HDMI main-controller clock sequencing, directly targeting the
+  remaining `lock70` versus Linux-visible `lock79` difference.
+
+2026-07-04 MC-clock handoff:
+
+- Installed package for next reboot:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-mcclk-1024x600.fex`
+- Package SHA-256:
+  `4d15d7c88b17aa1114aa99175ad489a4d3a36142430736fda2a4b113cb1e1844`
+- U-Boot item SHA-256:
+  `4febc8f1543f071fd12d63949e3ca7a79f7b030c7668c212029221c17cce46c1`
+- Source patches of interest:
+  `0021-sync-linux-top-phy-pll-autocal.patch`,
+  `0022-add-top-phy-pll-env-diag.patch`, and
+  `0023-sync-linux-hdmi-mc-clock-enable.patch`.
+- Safety/capability strings: contains `boot.scr`, `sunxi_hdmi20`,
+  `sunxi_drm_env`, `sunxi_hdmi_env`, `opi_hdmi_pattern_diag`,
+  `opi_hdmi_pattern_reconfig`, `opi_hdmi_diag`, `1024x600`,
+  `top phy auto calculate done`, and `dw hdmi mc enable all clock`; does not
+  contain `sunxi_drm reinit` or `full hdmi reinit`.
+- Install evidence: `scripts/install-sd-boot-package.sh` backed up the
+  previous SD bootloader slot to
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T032623Z.bin`
+  and verified the new SD TOC1 slot by readback.
+- Expected evidence: richer `top20_...top40_...` diagnostics plus whether
+  `MC_LOCKONCLOCK` moves from `lock70` toward Linux's visible `lock79`.
+
 2026-07-04 HDMI20 pattern retest with diagnostic-capable package:
 
 - Control result: with
