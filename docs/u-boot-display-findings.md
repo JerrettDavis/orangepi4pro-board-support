@@ -1115,6 +1115,44 @@ delivering a valid visible signal until Linux later performs its full
   boot, with post-reconfigure HDMI diagnostics showing whether the
   DesignWare core registers remain zero or move toward Linux's working state.
 
+2026-07-04 frame-composer iteration result:
+
+- Installed package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-fciter-1024x600.fex`
+- Package SHA-256:
+  `a6ff4344d16002f4274a30fee0c4ed861fb6e4e1cedd9251a810ab38e69a2db0`
+- Reboot result: Linux reached NVMe with
+  `bootchooser=uboot-visual-hdmi20-pattern-ok`. The direct DesignWare HDMI
+  core diagnostics moved away from the previous all-zero values:
+  `phy2e,stat03,rst00,lock70,vid58,gcp01`, with
+  `opi_reinit_reinit=...core2e0300705801`. This proves the earlier zero core
+  readings were stale/guarded diagnostics rather than a completely idle HDMI
+  core. The remaining likely gap is RX-sense; U-Boot reports `stat03`, while
+  Linux has previously shown upper RX-sense lane bits after HDMI becomes
+  visible.
+
+2026-07-04 RX-sense wait handoff:
+
+- Installed package for next reboot:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-hdmi-rxsense-1024x600.fex`
+- Package SHA-256:
+  `59fe28f8c629ff194e413cc7dd2878c6a6aec7103744a0422a4a1c537576d3ff`
+- U-Boot item SHA-256:
+  `1f0cd3409f43a11909f3b18f199554258c69b434332bbd8bf61e6fa05c07498b`
+- Source patch:
+  `configs/u-boot/0020-wait-for-snps-phy-rxsense.patch`
+- Safety/capability strings: contains `boot.scr`, `sunxi_hdmi20`,
+  `sunxi_drm_env`, `sunxi_hdmi_env`, `opi_hdmi_pattern_diag`,
+  `opi_hdmi_pattern_reconfig`, `opi_hdmi_diag`, `rxsense`, and `1024x600`;
+  does not contain `sunxi_drm reinit` or `full hdmi reinit`.
+- Install evidence: `scripts/install-sd-boot-package.sh` backed up the
+  previous SD bootloader slot to
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T032239Z.bin`
+  and verified the new SD TOC1 slot by readback.
+- Expected evidence: `PHY_STAT0` should either remain `stat03` after the
+  bounded wait or move toward the later Linux-visible RX-sense state. Visual
+  success would be a visible red bootloader pattern before Linux.
+
 2026-07-04 HDMI20 pattern retest with diagnostic-capable package:
 
 - Control result: with
