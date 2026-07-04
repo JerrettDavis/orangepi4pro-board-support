@@ -1852,3 +1852,40 @@ delivering a valid visible signal until Linux later performs its full
   the OS loader. Because stock U-Boot lacks `bootmenu` and the custom
   diagnostic commands, this test is specifically for restoring bootloader video
   with the stock display stack before adding selection interaction on top.
+- Reboot result: failed visually. The board booted NVMe Ubuntu and preserved
+  `bootchooser=uboot-logo-preinit-ok`, but because this is stock U-Boot the
+  HDMI/DRM diagnostics were unavailable (`opi_logo_hdmi=diag-missing`,
+  `opi_logo_drm=diag-missing`).
+
+2026-07-04 SD boot-resource restore:
+
+- Finding: the reserved SD boot-resource area at absolute sectors 40960-65536
+  was all zeroes. Boot0 still byte-matched the stock
+  `boot0_sdcard.fex`, and the stock U-Boot item was installed, so the missing
+  boot-resource FAT/MBR area is the next concrete explanation for losing the
+  factory bootloader splash.
+- Restore command:
+  `ORANGEPI4PRO_ALLOW_BOOT_RESOURCE_WRITE=1 scripts/stage-sd-boot-resource.sh --device /dev/mmcblk1 --source-logo /boot/logo.bmp --yes`
+- The restore writes only the reserved boot-resource range: four `softw411`
+  MBR copies at sector 40960 and a FAT16 boot-resource filesystem at sector
+  41088, ending at the first Linux partition start sector 65536.
+- SD boot-resource backup before restore:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-boot-resource-before-20260704T172145Z.bin`
+- Backup SHA-256:
+  `cfadd44a103cbd6d5726fa07b27d7aad2f67ed3930ff96901c486a5beaf7e723`
+- Readback validation:
+  `scripts/validate-sd-boot-resource.sh --device /dev/mmcblk1 --source-logo /boot/logo.bmp`
+  passed.
+- Readback hashes:
+  - MBR area:
+    `cc62563f96ec00f80c3bfd5464271fca18eaa174c7ad7dd7d4498e97f3c11620`
+  - FAT boot-resource image:
+    `74d3006381d0b20b68c963774d3e1584d3d45fb32d03e2e294b5a7e28efe2b07`
+  - Source logo:
+    `96739ee09e816d9428becc0b2150a141929bab997f7dccbe82b4af2c5427c0d5`
+- Settlement validation now calls `scripts/validate-sd-boot-resource.sh` so
+  future reboot gates verify both the TOC1 package and the boot-resource logo
+  dependency.
+- Expected reboot evidence: with stock boot0, stock U-Boot, stock script-first
+  scan order, and a restored boot-resource area, the factory bootloader splash
+  should reappear before the OS loader.
