@@ -1816,3 +1816,39 @@ delivering a valid visible signal until Linux later performs its full
   `#error "undefined platform!!!"`. This suggests the visible factory splash is
   not recoverable by simply enabling the legacy DISP2 BootGUI stack in this
   branch.
+
+2026-07-04 stock vendor U-Boot visual recovery test:
+
+- Result of the fixed-header rebuilt-U-Boot test: failed visually. The board
+  booted NVMe Ubuntu and preserved `bootchooser=uboot-logo-preinit-ok`, but the
+  U-Boot HDMI diagnostics were unchanged: HDMI-A was reported initialized and
+  enabled while the low-level HDMI/PHY status remained idle/unlocked.
+- Rationale for next test: the factory Orange Pi U-Boot item is the only
+  payload known to have displayed the vendor "initializing boot loader" splash
+  on this hardware. The next package therefore returns to the stock vendor
+  U-Boot item and applies only the length-preserving script-first scan-order
+  patch. It does not include the locally rebuilt DRM/HDMI diagnostic commands.
+- Prepared command:
+  `scripts/prepare-vendor-nvme-scriptfirst-package.sh --vendor /usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex --output /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_vendor-nvme-scriptfirst-stockvisual.fex`
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_vendor-nvme-scriptfirst-stockvisual.fex`
+- Package SHA-256:
+  `d798104ccd705e542842fac409b1e2694c6ca19fcfac75fc30036a4535a7d318`
+- U-Boot item SHA-256:
+  `77836181cc87b84559b11579eeb8388f216c51b8127951e2692a92101be6ace0`
+- Validation: `scripts/validate-stock-bootgui-package.sh --package
+  /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_vendor-nvme-scriptfirst-stockvisual.fex`
+  passed. It verified script-first scan order, stock `sunxi_show_logo`,
+  `boot.bmp`, and `bootlogo` strings, and absence of custom selector/debug
+  U-Boot payload strings.
+- SD backup before install:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T171807Z.bin`
+- Backup SHA-256:
+  `03bec02a59c88366e22d6350a9b01979049acd5f722c859877e881f27b6719f6`
+- Installed-slot validation: settlement validation byte-matched the SD TOC1
+  slot to package SHA
+  `d798104ccd705e542842fac409b1e2694c6ca19fcfac75fc30036a4535a7d318`.
+- Expected reboot evidence: the factory bootloader splash should return before
+  the OS loader. Because stock U-Boot lacks `bootmenu` and the custom
+  diagnostic commands, this test is specifically for restoring bootloader video
+  with the stock display stack before adding selection interaction on top.
