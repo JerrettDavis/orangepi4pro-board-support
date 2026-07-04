@@ -1000,6 +1000,26 @@ delivering a valid visible signal until Linux later performs its full
   `1024x600`, `clk_tcon_tv`, `clk_bus_hdmi`, `sunxi_drm_env`,
   `sunxi_hdmi_env`, and script-first `scan_dev_for_boot`; they do not include
   `sunxi_drm reinit`.
+
+2026-07-04 BootGUI `logo` command diagnostic:
+
+- Current installed SD TOC1 remains the stock vendor SD U-Boot with only the
+  script-first scan-order patch:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_vendor-sd-scriptfirst.fex`,
+  SHA-256 `77ef94aee8f8a6ec27d130822b70187fbf4316773d7ae5d59150e9027c654670`.
+- The SD `boot0_sdcard.fex` region byte-matches the vendor file at
+  `bs=8192 skip=1`, so boot0 is not the missing-display variable.
+- Source review found two different factory logo paths. The prior tests used
+  AW_DRM `sunxi_show_logo`; the vendor binary also contains the older BootGUI
+  `logo` command, which calls `sunxi_bmp_display("bootlogo.bmp")`.
+- The next low-risk test changes boot filesystem files only: stage
+  `selector_logo_command=logo`, restore the Orange Pi BMP asset as
+  `bootlogo.bmp`, `boot.bmp`, and `boot1.bmp`, hold for 20 seconds, then boot
+  NVMe through the known-good legacy `bootm` path.
+- Expected post-reboot evidence:
+  `bootchooser=uboot-bootgui-logo-ok` or
+  `bootchooser=uboot-bootgui-logo-fail`. A visible bootloader image during the
+  hold would prove the factory BootGUI path is usable for the selector.
 - Reboot result: Linux reached the NVMe root with
   `bootchooser=uboot-logo-preinit-ok`, but U-Boot exported
   `opi_logo_hdmi=drm-missing` and `opi_logo_drm=missing`. That proves even the
