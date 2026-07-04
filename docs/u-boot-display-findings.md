@@ -1675,3 +1675,43 @@ delivering a valid visible signal until Linux later performs its full
   markers. The package SHA
   `feacc7a99a48a1f6a64318b8372042f0b24df36bc5bae1f35f4bcc36581e6438` is now
   blocked by `scripts/install-sd-boot-package.sh`.
+
+2026-07-04 delayed `sunxi_show_logo` HPD test:
+
+- Rationale: Linux does not reliably finish HDMI configuration until several
+  seconds after early boot. Recent user-visible behavior also included a
+  monitor-side `no signal` period before Linux/plymouth or the desktop became
+  visible. This test leaves the vendor embedded-logo path intact and adds only
+  a 5-second delay immediately before AW_DRM `sunxi_show_logo()` draws the
+  factory image.
+- Build command:
+  `scripts/build-vendor-uboot.sh --bootgui-hpd-delay --clean`
+- Patch:
+  `configs/u-boot/0033-delay-sunxi-show-logo-for-hdmi-hpd.patch`
+- Build artifact:
+  `.build/u-boot/artifacts/bootgui-hpd-delay/u-boot-sun60iw2p1.bin`
+- Build artifact SHA-256:
+  `e10c6eab23b27993cfbdd65c85afac1bc16d4e5570ed4ed57f43ddb3bec84f55`
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_nvme-scriptfirst-sunxi-show-logo-delay.fex`
+- Package SHA-256:
+  `65eaba1bff9c98324213d0a6c4849f2dccf74de2b115e4edb724ed63a29e6012`
+- U-Boot item SHA-256:
+  `e10c6eab23b27993cfbdd65c85afac1bc16d4e5570ed4ed57f43ddb3bec84f55`
+- SD backup before install:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T164212Z.bin`
+- Backup SHA-256:
+  `513388dd8c9ee53412ea2742427550c97c1a929144c8a681afd4da63cdded2be`
+- Installed-slot validation: the SD TOC1 slot at `bs=8192 skip=2050`
+  byte-matched the package SHA
+  `65eaba1bff9c98324213d0a6c4849f2dccf74de2b115e4edb724ed63a29e6012`.
+- Safety validation: `scripts/validate-sunxi-logo-delay-package.sh` requires
+  script-first scan order, `boot.bmp decompressed OK`, `embedded boot.bmp
+  array`, `sysboot`, `extlinux.conf`, and the exact
+  `Orange Pi 4 Pro: waiting 5 seconds before sunxi_show_logo` marker. It
+  rejects the previously unsafe RX-sense, stale-logo-retry, post-logo-retry,
+  file-backed boot1.bmp, and high-contrast selector payload strings.
+- Expected reboot evidence: the display should no longer report `no signal`
+  during the U-Boot logo hold. The boot script should still reach
+  `bootchooser=uboot-logo-preinit-ok` before extlinux boots the default NVMe
+  Ubuntu entry.

@@ -11,6 +11,7 @@ work_dir=${WORK_DIR:-"$build_root/work"}
 artifact_dir=${ARTIFACT_DIR:-"$build_root/artifacts"}
 fragment=${FRAGMENT:-"$repo_root/configs/u-boot/orangepi4pro-bootmenu.fragment"}
 bootgui_fragment=${BOOTGUI_FRAGMENT:-"$repo_root/configs/u-boot/orangepi4pro-bootgui.fragment"}
+awdrm_bootgui_fragment=${AWDRM_BOOTGUI_FRAGMENT:-"$repo_root/configs/u-boot/orangepi4pro-awdrm-bootgui.fragment"}
 bootmenu_patch=${BOOTMENU_PATCH:-"$repo_root/configs/u-boot/0001-distro-scan-scripts-before-extlinux.patch"}
 display_diag_patch=${DISPLAY_DIAG_PATCH:-"$repo_root/configs/u-boot/0002-add-sunxi-drm-env-diag.patch"}
 display_mode_patch=${DISPLAY_MODE_PATCH:-"$repo_root/configs/u-boot/0003-use-cyberdeck-hdmi-default-mode.patch"}
@@ -44,6 +45,7 @@ hdmi_stale_enable_retry_patch=${HDMI_STALE_ENABLE_RETRY_PATCH:-"$repo_root/confi
 hdmi_logo_recover_patch=${HDMI_LOGO_RECOVER_PATCH:-"$repo_root/configs/u-boot/0030-recover-stale-hdmi-before-logo.patch"}
 hdmi_post_logo_retry_patch=${HDMI_POST_LOGO_RETRY_PATCH:-"$repo_root/configs/u-boot/0031-retry-unlocked-hdmi-after-logo-enable.patch"}
 hdmi_relaxed_logo_retry_patch=${HDMI_RELAXED_LOGO_RETRY_PATCH:-"$repo_root/configs/u-boot/0032-relax-hdmi-logo-retry-and-report-skip.patch"}
+bootgui_hpd_delay_patch=${BOOTGUI_HPD_DELAY_PATCH:-"$repo_root/configs/u-boot/0033-delay-sunxi-show-logo-for-hdmi-hpd.patch"}
 apply_drm_reinit_patch=${APPLY_DRM_REINIT_PATCH:-false}
 applied_display_mode_patch=false
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
@@ -55,7 +57,7 @@ usage() {
   cat <<'USAGE'
 Build the Orange Pi vendor U-Boot tree for sun60iw2 without flashing anything.
 
-Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu|--scriptfirst-logo|--scriptfirst-diag|--scriptfirst-diag-modeclock|--bootgui-scriptfirst] [--selector-logo] [--clean]
+Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu|--scriptfirst-logo|--scriptfirst-diag|--scriptfirst-diag-modeclock|--bootgui-scriptfirst|--bootgui-hpd-delay] [--selector-logo] [--clean]
 
 Environment overrides:
   SOURCE_DIR       Existing local vendor tree. Default:
@@ -103,6 +105,9 @@ while [ "$#" -gt 0 ]; do
       ;;
     --bootgui-scriptfirst)
       mode=bootgui-scriptfirst
+      ;;
+    --bootgui-hpd-delay)
+      mode=bootgui-hpd-delay
       ;;
     --selector-logo)
       mode=bootmenu
@@ -173,7 +178,7 @@ mkdir -p "$artifact_dir/lichee-chip/orangepi4pro/bin" "$artifact_dir/lichee-plat
 
 make "${make_common[@]}" "$defconfig"
 
-if [ "$mode" = bootmenu ] || [ "$mode" = scriptfirst-logo ] || [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ] || [ "$mode" = bootgui-scriptfirst ]; then
+if [ "$mode" = bootmenu ] || [ "$mode" = scriptfirst-logo ] || [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ] || [ "$mode" = bootgui-scriptfirst ] || [ "$mode" = bootgui-hpd-delay ]; then
   if [ ! -r "$bootmenu_patch" ]; then
     printf 'ERROR: bootmenu source patch not readable: %s\n' "$bootmenu_patch" >&2
     exit 1
@@ -573,18 +578,35 @@ if [ "$mode" = bootmenu ]; then
   make "${make_common[@]}" olddefconfig
 fi
 
-if [ "$mode" = bootgui-scriptfirst ]; then
+if [ "$mode" = bootgui-scriptfirst ] || [ "$mode" = bootgui-hpd-delay ]; then
+  if [ "$mode" = bootgui-hpd-delay ]; then
+    if [ ! -r "$bootgui_hpd_delay_patch" ]; then
+      printf 'ERROR: BootGUI HPD delay patch not readable: %s\n' "$bootgui_hpd_delay_patch" >&2
+      exit 1
+    fi
+    git -C "$work_dir" apply --recount "$bootgui_hpd_delay_patch"
+    grep -q 'waiting 5 seconds before sunxi_show_logo' \
+      "$work_dir/drivers/video/drm/sunxi_drm_drv.c" \
+      || {
+        printf 'ERROR: sunxi_show_logo HPD delay patch did not apply cleanly\n' >&2
+        exit 1
+      }
+  fi
   if [ ! -r "$fragment" ]; then
     printf 'ERROR: config fragment not readable: %s\n' "$fragment" >&2
     exit 1
   fi
-  if [ ! -r "$bootgui_fragment" ]; then
-    printf 'ERROR: BOOT_GUI config fragment not readable: %s\n' "$bootgui_fragment" >&2
+  bootgui_mode_fragment=$bootgui_fragment
+  if [ "$mode" = bootgui-hpd-delay ]; then
+    bootgui_mode_fragment=$awdrm_bootgui_fragment
+  fi
+  if [ ! -r "$bootgui_mode_fragment" ]; then
+    printf 'ERROR: BOOT_GUI config fragment not readable: %s\n' "$bootgui_mode_fragment" >&2
     exit 1
   fi
   (
     cd "$work_dir"
-    CROSS_COMPILE="$cross_compile" ./scripts/kconfig/merge_config.sh .config "$fragment" "$bootgui_fragment"
+    CROSS_COMPILE="$cross_compile" ./scripts/kconfig/merge_config.sh .config "$fragment" "$bootgui_mode_fragment"
   )
   make "${make_common[@]}" olddefconfig
 fi
@@ -632,6 +654,7 @@ apply_display_mode_patch=$apply_display_mode_patch
 applied_display_mode_patch=$applied_display_mode_patch
 apply_drm_reinit_patch=$apply_drm_reinit_patch
 bootgui_fragment=$bootgui_fragment
+awdrm_bootgui_fragment=$awdrm_bootgui_fragment
 cross_compile=$cross_compile
 dtc=${DTC:-/usr/bin/dtc}
 EOF

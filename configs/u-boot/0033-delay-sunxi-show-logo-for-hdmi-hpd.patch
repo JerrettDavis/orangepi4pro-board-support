@@ -1,0 +1,32 @@
+diff --git a/drivers/video/drm/sunxi_drm_drv.c b/drivers/video/drm/sunxi_drm_drv.c
+index 6712f32e..7f3c39d9 100644
+--- a/drivers/video/drm/sunxi_drm_drv.c
++++ b/drivers/video/drm/sunxi_drm_drv.c
+@@ -1396,6 +1396,19 @@ int sunxi_backlight_ctrl(char *reg)
+ 	return 0;
+ }
+ 
++static int opi_sunxi_show_logo_delay_done;
++
++static void opi_sunxi_show_logo_delay_for_hdmi_hpd(void)
++{
++	if (opi_sunxi_show_logo_delay_done)
++		return;
++
++	opi_sunxi_show_logo_delay_done = 1;
++	printf("Orange Pi 4 Pro: waiting 5 seconds before sunxi_show_logo\n");
++	mdelay(5000);
++}
++
+ int sunxi_show_logo(void)
+ {
+ 	struct display_state *s = NULL;
+@@ -1410,6 +1423,8 @@ int sunxi_show_logo(void)
+ 		return -1;
+ 	}
+ 
++	opi_sunxi_show_logo_delay_for_hdmi_hpd();
++
+ 	sunxi_drm_for_each_display(s, drm) {
+ 		/*s->logo.mode = s->logo_mode;*/
+ 		if (load_bmp_logo(s, s->ulogo_name)) {
