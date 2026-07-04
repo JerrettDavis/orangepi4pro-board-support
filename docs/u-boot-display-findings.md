@@ -38,6 +38,27 @@
   order changed from extlinux-first to script-first; monitor and SCP payloads
   remain stock. It lets `/boot/boot.scr` call `sunxi_show_logo` and hold for
   20 seconds before NVMe boot, while avoiding custom HDMI reinit code.
+- Result: the boot script did run and Linux reported
+  `bootchooser=uboot-logo-preinit-ok`, but the display stayed black before
+  Linux and the diagnostic bootm path removed the Plymouth OS splash. Source
+  review showed the stock command can still return success even when
+  `load_bmp_logo()` failed, because the return value is not tied to the logo
+  load failure.
+- Source review found the stock AW DRM loader uses
+  `load_file(bmp_name, "bootloader")` and then
+  `load_file(bmp_name, "boot-resource")`; it does not load
+  `/boot/bootlogo.bmp` from the extlinux boot filesystem. The current SD card
+  has one DOS Linux partition starting at sector 65536 and no named
+  `boot-resource` partition. U-Boot's SDMMC logical offset is 40960 sectors,
+  so a minimal Allwinner resource map can fit entirely in the zeroed reserved
+  sector range 40960-65535.
+- New guarded script:
+  `scripts/stage-sd-boot-resource.sh`. Its dry-run creates four 16 KiB
+  `softw411` MBR copies at absolute sector 40960, starts a FAT16
+  `boot-resource` image at absolute sector 41088, ends at sector 65536, and
+  copies `bootlogo.bmp`, `boot.bmp`, and `boot1.bmp` into that FAT image. The
+  script defaults to dry-run and requires
+  `ORANGEPI4PRO_ALLOW_BOOT_RESOURCE_WRITE=1 --yes` before writing.
 
 Captured 2026-07-02 after the video-first selector test hung before Linux.
 
