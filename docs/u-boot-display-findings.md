@@ -855,6 +855,21 @@ delivering a valid visible signal until Linux later performs its full
   `bootchooser=uboot-logo-preinit-ok` plus `opi_logo_hdmi=...` and
   `opi_logo_drm=...` diagnostics captured after `sunxi_show_logo`.
 
+2026-07-04 recovery finding:
+
+- External recovery restored the SD raw bootloader slot to the vendor NVMe TOC1
+  package:
+  `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex`,
+  `sha256=e626234a6eb9420ac29f515dd6acc543e7f0876e3dc086eec2fe221a50cc54f2`.
+- `/dev/mtdblock0` did not contain a TOC1 header and appears erased, so current
+  bootloader tests should treat `/dev/mmcblk1` offset `8192 * 2050` as the live
+  bootloader source.
+- Stock source review showed `sunxi_show_logo` hard-codes `bootlogo.bmp`.
+  The active boot files contained `logo.bmp`, `boot.bmp`, and `boot1.bmp`, but
+  no `bootlogo.bmp`. Before changing U-Boot again, the next test should restore
+  the vendor logo asset under all three expected names and validate that the
+  installed bootloader remains the vendor NVMe package.
+
 2026-07-03 passive diagnostic reboot result:
 
 - Reboot reached the NVMe Ubuntu root with `bootchooser=uboot-logo-preinit-ok`.
