@@ -1001,6 +1001,35 @@ delivering a valid visible signal until Linux later performs its full
   `sunxi_hdmi_env`, and script-first `scan_dev_for_boot`; they do not include
   `sunxi_drm reinit`.
 
+2026-07-04 raw DE/TCON diagnostic package:
+
+- Build command:
+  `APPLY_DISPLAY_MODE_PATCH=true scripts/build-vendor-uboot.sh --bootmenu --clean`
+- Build artifact:
+  `.build/u-boot/artifacts/bootmenu/u-boot-sun60iw2p1.bin`
+- U-Boot item SHA-256:
+  `38ae59c77939ac73c06983b3e467aa3ee978b0ed05c0e211e077a5fe07f985a2`
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_a733-custom-bootmenu-de-diag-hdmi-pattern-1024x600.fex`
+- Package SHA-256:
+  `969e19b6a3e231f7e65b686bbc5dfa07b6e7d37df6decefdf88f214cc9bf535b`
+- SD TOC1 backup before install:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T040742Z.bin`
+- Backup SHA-256:
+  `0e9404b729eb5114b6058dca6a093c3d2861bc5b2e8077285b3dc52162895b54`
+- Change: `configs/u-boot/0002-add-sunxi-drm-env-diag.patch` now adds a
+  read-only `sunxi_de_env` command. It records selected DE, TCON4, and TCON
+  TOP registers in `opi_de_diag` without changing display programming.
+- Rationale: the prior 720p package reached NVMe and reported a locked HDMI
+  core (`phy2e,stat03,lock70,vid78,gcp01`), but there was still no visible
+  bootloader output. Linux later enables the same visible route
+  (`DE-0 -> tcon4 -> HDMI-A`), so the next evidence needed is whether U-Boot's
+  DE/TCON scanout state differs from Linux after the visual test.
+- Expected reboot evidence: `/proc/cmdline` should include
+  `bootchooser=uboot-visual-hdmi20-pattern-ok` and `opi_post_de=...` with
+  `de=...`, `tcon=...`, and `top=...` register groups. Visual success remains
+  a visible bootloader splash or selector before Linux starts.
+
 2026-07-04 current HDMI-chain 720p pattern package:
 
 - Build command:

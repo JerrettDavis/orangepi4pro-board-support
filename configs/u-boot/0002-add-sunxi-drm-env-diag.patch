@@ -2,7 +2,7 @@ diff --git a/drivers/video/drm/sunxi_drm_drv.c b/drivers/video/drm/sunxi_drm_drv
 index 8c5ad6ab4d..92f1bc0ef1 100644
 --- a/drivers/video/drm/sunxi_drm_drv.c
 +++ b/drivers/video/drm/sunxi_drm_drv.c
-@@ -1545,6 +1545,87 @@ static int sunxi_de_online_wb(void)
+@@ -1545,6 +1545,115 @@ static int sunxi_de_online_wb(void)
  	return 0;
  }
  
@@ -87,16 +87,50 @@ index 8c5ad6ab4d..92f1bc0ef1 100644
 +	return 0;
 +}
 +
++static int do_sunxi_de_env(struct cmd_tbl_s *cmdtp, int flag, int argc,
++			   char *const argv[])
++{
++	char diag[256];
++	u32 de_base = 0x05000000;
++	u32 tcon4_base = 0x05731000;
++	u32 tcon_top_base = 0x05720000;
++
++	snprintf(diag, sizeof(diag),
++		 "de=top%08x,bld%08x,ovl%08x,csc%08x,gam%08x,tcon=%08x_%08x_%08x_%08x,top=%08x_%08x_%08x",
++		 readl((void __iomem *)(uintptr_t)(de_base + 0x000000)),
++		 readl((void __iomem *)(uintptr_t)(de_base + 0x281000)),
++		 readl((void __iomem *)(uintptr_t)(de_base + 0x101000)),
++		 readl((void __iomem *)(uintptr_t)(de_base + 0x100800)),
++		 readl((void __iomem *)(uintptr_t)(de_base + 0x289000)),
++		 readl((void __iomem *)(uintptr_t)(tcon4_base + 0x000)),
++		 readl((void __iomem *)(uintptr_t)(tcon4_base + 0x010)),
++		 readl((void __iomem *)(uintptr_t)(tcon4_base + 0x040)),
++		 readl((void __iomem *)(uintptr_t)(tcon4_base + 0x100)),
++		 readl((void __iomem *)(uintptr_t)(tcon_top_base + 0x000)),
++		 readl((void __iomem *)(uintptr_t)(tcon_top_base + 0x010)),
++		 readl((void __iomem *)(uintptr_t)(tcon_top_base + 0x020)));
++
++	env_set("opi_de_diag", diag);
++	env_set("opi_de_diag_ok", "true");
++	return 0;
++}
++
  static int do_sunxi_sunxi_drm(struct cmd_tbl_s *cmdtp, int flag, int argc,
  				char *const argv[])
  {
-@@ -1602,6 +1683,12 @@ static char sunxi_drm_help_text[] =
+@@ -1602,6 +1711,18 @@ static char sunxi_drm_help_text[] =
  	"sunxi_drm colorbar [type] - Set clock frequency\n"
  	"sunxi_drm wb - Online Writeback image to boot-resource partition\n";
  
 +U_BOOT_CMD(
 +	sunxi_drm_env, 1, 1, do_sunxi_drm_env,
 +	"export sunxi drm state to opi_drm_diag environment variable",
++	NULL
++);
++
++U_BOOT_CMD(
++	sunxi_de_env, 1, 1, do_sunxi_de_env,
++	"export raw sunxi DE/TCON scanout registers to opi_de_diag",
 +	NULL
 +);
 +

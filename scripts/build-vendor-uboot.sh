@@ -186,7 +186,7 @@ if [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ]; t
     printf 'ERROR: display diagnostic patch not readable: %s\n' "$display_diag_patch" >&2
     exit 1
   fi
-  git -C "$work_dir" apply "$display_diag_patch"
+  git -C "$work_dir" apply --recount "$display_diag_patch"
   if [ ! -r "$hdmi_diag_patch" ]; then
     printf 'ERROR: HDMI diagnostic patch not readable: %s\n' "$hdmi_diag_patch" >&2
     exit 1
@@ -330,7 +330,7 @@ if [ "$mode" = bootmenu ]; then
     printf 'ERROR: display diagnostic patch not readable: %s\n' "$display_diag_patch" >&2
     exit 1
   fi
-  git -C "$work_dir" apply "$display_diag_patch"
+  git -C "$work_dir" apply --recount "$display_diag_patch"
   if [ "$apply_display_mode_patch" = true ]; then
     if [ ! -r "$display_mode_patch" ]; then
       printf 'ERROR: display mode patch not readable: %s\n' "$display_mode_patch" >&2
