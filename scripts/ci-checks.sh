@@ -33,6 +33,22 @@ scripts/sunxi-toc1-package.py selftest
 bash -n scripts/validate-stock-bootgui-package.sh
 bash -n scripts/validate-sunxi-logo-delay-package.sh
 
+if [ -f /usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex ]; then
+  printf 'Validating known safe boot package visual path...\n'
+  scripts/validate-boot-package-visual-path.sh \
+    --package /usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex \
+    --profile safe-baseline
+fi
+if [ -f /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-early-display-recycle.fex ]; then
+  printf 'Checking unsafe HDMI recycle package remains blocked...\n'
+  if scripts/validate-boot-package-visual-path.sh \
+    --package /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-early-display-recycle.fex \
+    --profile report >/dev/null 2>&1; then
+    printf 'ERROR: known unsafe HDMI recycle package unexpectedly passed validation\n' >&2
+    exit 1
+  fi
+fi
+
 printf 'Scanning for obvious secret patterns...\n'
 if grep -RInE '(BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|ghp_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+|AKIA[0-9A-Z]{16}|password[[:space:]]*=|token[[:space:]]*=|secret[[:space:]]*=)' \
   --exclude-dir=.git \

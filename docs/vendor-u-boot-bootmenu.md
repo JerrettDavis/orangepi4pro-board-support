@@ -68,6 +68,26 @@ scripts/sunxi-toc1-package.py repack \
 The helper never flashes media, writes block devices, writes MTD devices, or
 installs a bootloader.
 
+Use the visual-path validator before proposing any package for a display or
+selector reboot test:
+
+```bash
+scripts/validate-boot-package-visual-path.sh \
+  --package /usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package_a733_nvme.fex \
+  --profile safe-baseline \
+  --device /dev/mmcblk1
+
+scripts/validate-boot-package-visual-path.sh \
+  --package /var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_vendor-nvme-scriptfirst-stockvisual.fex \
+  --profile script-first
+```
+
+The validator distinguishes stock extlinux-first scan order from script-first
+scan order, reports whether the package contains the AW DRM `sunxi_show_logo`
+path or legacy BootGUI symbols, and blocks known unsafe display reinit paths.
+Current vendor packages contain AW DRM logo support and fastlogo strings, but
+do not contain BootGUI symbols.
+
 On the current cyberdeck boot setup, the SPI flash readback was erased and the
 active bootloader package was found in the SD-card bootloader area:
 
