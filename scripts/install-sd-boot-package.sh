@@ -104,6 +104,15 @@ case "$package_sha" in
       exit 1
     fi
     ;;
+  feacc7a99a48a1f6a64318b8372042f0b24df36bc5bae1f35f4bcc36581e6438)
+    if [ "${ORANGEPI4PRO_ALLOW_UNSAFE_BOOTLOADER_WRITE:-}" != 1 ]; then
+      printf 'ERROR: refusing known-unsafe boot package: %s\n' "$package_sha" >&2
+      printf '  package=%s\n' "$package" >&2
+      printf '  reason=2026-07-04 RX-sense stale HDMI retry package did not boot normally and required external recovery\n' >&2
+      printf 'Set ORANGEPI4PRO_ALLOW_UNSAFE_BOOTLOADER_WRITE=1 only for deliberate bench recovery testing.\n' >&2
+      exit 1
+    fi
+    ;;
 esac
 
 if [ $((package_size % 4)) -ne 0 ]; then

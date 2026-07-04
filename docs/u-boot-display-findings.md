@@ -1669,3 +1669,9 @@ delivering a valid visible signal until Linux later performs its full
   `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T043036Z.bin`
 - Backup SHA-256:
   `d8dcda3f1f422f972d57cd761bcd3c179c42ef5c218e629179a7c2d161dfb2ef`
+- Reboot result: unsafe. The board did not complete a normal boot and required
+  external WSL recovery. After recovery, the system booted NVMe through
+  `bootchooser=extlinux-legacy-nvme` without the U-Boot visual diagnostic
+  markers. The package SHA
+  `feacc7a99a48a1f6a64318b8372042f0b24df36bc5bae1f35f4bcc36581e6438` is now
+  blocked by `scripts/install-sd-boot-package.sh`.
