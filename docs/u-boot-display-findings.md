@@ -1712,6 +1712,6 @@ delivering a valid visible signal until Linux later performs its full
   rejects the previously unsafe RX-sense, stale-logo-retry, post-logo-retry,
   file-backed boot1.bmp, and high-contrast selector payload strings.
 - Expected reboot evidence: the display should no longer report `no signal`
-  during the U-Boot logo hold. The boot script should still reach
+  during the 15-second U-Boot logo hold. The boot script should still reach
   `bootchooser=uboot-logo-preinit-ok` before extlinux boots the default NVMe
   Ubuntu entry.
