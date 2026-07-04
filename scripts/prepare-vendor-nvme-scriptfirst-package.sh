@@ -122,5 +122,8 @@ mkdir -p "$(dirname "$output")"
   --output "$output"
 
 "$repo_root/scripts/sunxi-toc1-package.py" inspect "$output"
+"$repo_root/scripts/validate-boot-package-visual-path.sh" \
+  --package "$output" \
+  --profile script-first
 printf '\nPrepared vendor NVMe script-first package:\n'
 sha256sum "$output"
