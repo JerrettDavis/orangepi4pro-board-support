@@ -1,0 +1,18 @@
+diff --git a/board/sunxi/board_common.c b/board/sunxi/board_common.c
+index c668d37d51..adbd31e58c 100644
+--- a/board/sunxi/board_common.c
++++ b/board/sunxi/board_common.c
+@@ -550,6 +550,12 @@ int board_early_init_r(void)
+ 		(work_mode == WORK_MODE_CARD_PRODUCT) ||
+ 		(work_mode == WORK_MODE_USB_PRODUCT) ||
+ 		(work_mode == WORK_MODE_CARD_UPDATE) ||
+ 		(work_mode == WORK_MODE_UDISK_UPDATE)) {
++		/*
++		 * The cyberdeck HDMI panel can assert signal/HPD late. Delay
++		 * before AW DRM snapshots the display state; later logo delays
++		 * are too late if this initial probe captured a dead route.
++		 */
++		mdelay(8000);
+ 		ret  = initr_sunxi_display();
+ #ifdef CONFIG_EINK200_SUNXI
+ 		ret = initr_sunxi_eink();

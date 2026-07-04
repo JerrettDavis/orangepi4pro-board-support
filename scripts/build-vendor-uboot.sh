@@ -46,6 +46,7 @@ hdmi_logo_recover_patch=${HDMI_LOGO_RECOVER_PATCH:-"$repo_root/configs/u-boot/00
 hdmi_post_logo_retry_patch=${HDMI_POST_LOGO_RETRY_PATCH:-"$repo_root/configs/u-boot/0031-retry-unlocked-hdmi-after-logo-enable.patch"}
 hdmi_relaxed_logo_retry_patch=${HDMI_RELAXED_LOGO_RETRY_PATCH:-"$repo_root/configs/u-boot/0032-relax-hdmi-logo-retry-and-report-skip.patch"}
 bootgui_hpd_delay_patch=${BOOTGUI_HPD_DELAY_PATCH:-"$repo_root/configs/u-boot/0033-delay-sunxi-show-logo-for-hdmi-hpd.patch"}
+early_display_delay_patch=${EARLY_DISPLAY_DELAY_PATCH:-"$repo_root/configs/u-boot/0034-delay-before-sunxi-display-init.patch"}
 apply_drm_reinit_patch=${APPLY_DRM_REINIT_PATCH:-false}
 applied_display_mode_patch=false
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
@@ -58,7 +59,7 @@ usage() {
   cat <<'USAGE'
 Build the Orange Pi vendor U-Boot tree for sun60iw2 without flashing anything.
 
-Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu|--scriptfirst-logo|--scriptfirst-diag|--scriptfirst-diag-modeclock|--bootgui-scriptfirst|--bootgui-hpd-delay|--logo-delay-diag] [--selector-logo] [--clean]
+Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu|--scriptfirst-logo|--scriptfirst-diag|--scriptfirst-diag-modeclock|--bootgui-scriptfirst|--bootgui-hpd-delay|--logo-delay-diag|--early-display-delay] [--selector-logo] [--clean]
 
 Environment overrides:
   SOURCE_DIR       Existing local vendor tree. Default:
@@ -112,6 +113,9 @@ while [ "$#" -gt 0 ]; do
       ;;
     --logo-delay-diag)
       mode=logo-delay-diag
+      ;;
+    --early-display-delay)
+      mode=early-display-delay
       ;;
     --selector-logo)
       mode=bootmenu
@@ -183,7 +187,7 @@ mkdir -p "$artifact_dir/lichee-chip/orangepi4pro/bin" "$artifact_dir/lichee-plat
 
 make "${make_common[@]}" "$defconfig"
 
-if [ "$mode" = bootmenu ] || [ "$mode" = scriptfirst-logo ] || [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ] || [ "$mode" = bootgui-scriptfirst ] || [ "$mode" = bootgui-hpd-delay ] || [ "$mode" = logo-delay-diag ]; then
+if [ "$mode" = bootmenu ] || [ "$mode" = scriptfirst-logo ] || [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ] || [ "$mode" = bootgui-scriptfirst ] || [ "$mode" = bootgui-hpd-delay ] || [ "$mode" = logo-delay-diag ] || [ "$mode" = early-display-delay ]; then
   if [ ! -r "$bootmenu_patch" ]; then
     printf 'ERROR: bootmenu source patch not readable: %s\n' "$bootmenu_patch" >&2
     exit 1
@@ -332,6 +336,37 @@ if [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ]; t
       printf 'ERROR: DRM diagnostic patch did not apply cleanly\n' >&2
       exit 1
     }
+  make "${make_common[@]}" olddefconfig
+fi
+
+if [ "$mode" = early-display-delay ]; then
+  for patch in \
+    "$display_diag_patch" \
+    "$hdmi_diag_patch" \
+    "$early_display_delay_patch"; do
+    if [ ! -r "$patch" ]; then
+      printf 'ERROR: early-display-delay patch not readable: %s\n' "$patch" >&2
+      exit 1
+    fi
+    git -C "$work_dir" apply --recount "$patch"
+  done
+  grep -q 'sunxi_drm_env' \
+    "$work_dir/drivers/video/drm/sunxi_drm_drv.c" \
+    || {
+      printf 'ERROR: DRM env diagnostic patch did not apply cleanly\n' >&2
+      exit 1
+    }
+  grep -q 'sunxi_hdmi_env' \
+    "$work_dir/drivers/video/drm/sunxi_drm_hdmi.c" \
+    || {
+      printf 'ERROR: HDMI env diagnostic patch did not apply cleanly\n' >&2
+      exit 1
+    }
+  if ! grep -q 'initr_sunxi_display' "$work_dir/board/sunxi/board_common.c" \
+    || ! grep -q 'mdelay(8000)' "$work_dir/board/sunxi/board_common.c"; then
+    printf 'ERROR: early display delay patch did not apply cleanly\n' >&2
+    exit 1
+  fi
   make "${make_common[@]}" olddefconfig
 fi
 

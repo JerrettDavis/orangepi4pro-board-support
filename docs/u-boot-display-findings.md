@@ -1961,3 +1961,40 @@ delivering a valid visible signal until Linux later performs its full
 - Expected reboot evidence: visible U-Boot console text and/or the 20-second
   colorbar before Linux, followed by NVMe Ubuntu with
   `bootchooser=uboot-visual-colorbar-ok`.
+- Reboot result: failed visually. The boot script still ran and Linux reached
+  NVMe, but nothing was visible before the OS loader/desktop.
+
+2026-07-04 early display-init delay candidate:
+
+- New hypothesis: the HDMI panel/bridge may assert signal or HPD after the
+  vendor AW DRM display state is first probed. Delays in `boot.scr` or inside
+  `sunxi_show_logo()` happen after that state is already captured, so they can
+  still report command success against a dead route.
+- Source patch:
+  `configs/u-boot/0034-delay-before-sunxi-display-init.patch`
+- Build mode:
+  `scripts/build-vendor-uboot.sh --early-display-delay --clean`
+- Upstream source:
+  `https://github.com/orangepi-xunlong/u-boot-orangepi.git`,
+  branch `v2018.05-sun60iw2`, commit
+  `b791be842935b27268ae3d00e943a9075495f30a`.
+- Patch set: script-first distro scan order, passive `sunxi_drm_env`,
+  passive `sunxi_hdmi_env`, and an 8-second delay immediately before
+  `initr_sunxi_display()` in `board_early_init_r()`. It does not include the
+  known-risky DRM reinit, forced post-logo HDMI reinit, or RX-sense stale retry
+  patches.
+- Package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-early-display-delay.fex`
+- Package SHA-256:
+  `4fd435271d169f0d03e604551e98dd669b23ce570983914289e55152e9e6983a`
+- U-Boot item SHA-256:
+  `b1a7955133f03bd3676477292983c2f3d3c37d92278969d8f4b1efa4c9707665`
+- Recovery backup:
+  `/var/cache/orangepi4pro-images/bootloader-backups/mmcblk1-bootloader-before-20260704T174624Z.bin`
+- Recovery backup SHA-256:
+  `e57b167478c264215ff81e52fd66fd75701f392a9c016b7408f12f174f879f0e`
+- Expected reboot evidence: after the normal pre-display delay, U-Boot should
+  make the pre-Linux HDMI route visible, then the staged script should show
+  vidconsole text and/or the 20-second colorbar. Linux should boot NVMe with
+  `bootchooser=uboot-visual-colorbar-ok` and passive DRM/HDMI diagnostics
+  present instead of `diag-missing`.
