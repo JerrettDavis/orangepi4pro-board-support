@@ -1,0 +1,32 @@
+diff --git a/drivers/video/drm/sunxi_drm_hdmi.c b/drivers/video/drm/sunxi_drm_hdmi.c
+--- a/drivers/video/drm/sunxi_drm_hdmi.c
++++ b/drivers/video/drm/sunxi_drm_hdmi.c
+@@ -413,6 +413,8 @@ static int _sunxi_drv_hdmi_enable(struct sunxi_drm_hdmi *hdmi)
+ 	u8 mc_phyrstz = 0;
+ 	int ret = 0;
+ 	char diag[96];
++	const char *force_dvi_env = NULL;
++	bool force_dvi = false;
+ 	if (IS_ERR_OR_NULL(hdmi)) {
+ 		shdmi_err(hdmi);
+ 		return -1;
+@@ -448,6 +450,18 @@ static int _sunxi_drv_hdmi_enable(struct sunxi_drm_hdmi *hdmi)
+ 
+ 	_sunxi_drv_hdmi_set_rate(hdmi);
+ 
++	force_dvi_env = env_get("opi_hdmi_force_dvi");
++	force_dvi = force_dvi_env &&
++		(!strcmp(force_dvi_env, "1") ||
++		 !strcmp(force_dvi_env, "true") ||
++		 !strcmp(force_dvi_env, "yes"));
++	if (force_dvi) {
++		hdmi->disp_config.dvi_hdmi = DISP_DVI;
++		env_set("opi_hdmi_dvi_diag", "dvi=force");
++		hdmi_inf("cyberdeck force DVI output mode\n");
++	} else {
++		env_set("opi_hdmi_dvi_diag", "dvi=hdmi");
++	}
++
+ 	/* hdmi driver video ops enable */
+ 	ret = sunxi_hdmi_config();
+ 

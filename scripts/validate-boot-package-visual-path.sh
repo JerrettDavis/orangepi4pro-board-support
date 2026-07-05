@@ -9,13 +9,14 @@ seek_blocks=2050
 block_size=8192
 require_hdmi_dtb_aliases=false
 require_embedded_boot_bmp=false
+require_dvi_gate=false
 
 usage() {
   cat <<'USAGE'
 Inspect an Orange Pi 4 Pro TOC1 package for bootloader visual-path risk.
 
 Usage:
-  scripts/validate-boot-package-visual-path.sh --package FILE [--profile report|safe-baseline|script-first|fastlogo-scriptfirst] [--require-hdmi-dtb-aliases] [--require-embedded-boot-bmp] [--device /dev/mmcblk1]
+  scripts/validate-boot-package-visual-path.sh --package FILE [--profile report|safe-baseline|script-first|fastlogo-scriptfirst] [--require-hdmi-dtb-aliases] [--require-embedded-boot-bmp] [--require-dvi-gate] [--device /dev/mmcblk1]
 
 Profiles:
   report         Print package metadata and visual-path string findings only.
@@ -57,6 +58,9 @@ while [ "$#" -gt 0 ]; do
       ;;
     --require-embedded-boot-bmp)
       require_embedded_boot_bmp=true
+      ;;
+    --require-dvi-gate)
+      require_dvi_gate=true
       ;;
     -h|--help)
       usage
@@ -119,6 +123,7 @@ has_fastlogo_diag=false
 has_unsafe=false
 has_hdmi_dtb_aliases=false
 has_embedded_boot_bmp=false
+has_dvi_gate=false
 
 if grep -a -Fq 'sunxi_show_logo' "$uboot_item"; then
   has_aw_drm=true
@@ -141,6 +146,10 @@ if grep -a -Fq 'clk_tcon_tv' "$uboot_item" \
   && grep -a -Fq 'clk_tcon' "$uboot_item" \
   && grep -a -Fq 'rst_bus_tcon' "$uboot_item"; then
   has_hdmi_dtb_aliases=true
+fi
+if grep -a -Fq 'cyberdeck force DVI output mode' "$uboot_item" \
+  && grep -a -Fq 'opi_hdmi_dvi_diag' "$uboot_item"; then
+  has_dvi_gate=true
 fi
 
 unsafe_strings=(
@@ -170,6 +179,7 @@ printf 'has_fastlogo_strings=%s\n' "$has_fastlogo"
 printf 'has_fastlogo_diag=%s\n' "$has_fastlogo_diag"
 printf 'has_embedded_boot_bmp=%s\n' "$has_embedded_boot_bmp"
 printf 'has_hdmi_dtb_clock_aliases=%s\n' "$has_hdmi_dtb_aliases"
+printf 'has_dvi_force_gate=%s\n' "$has_dvi_gate"
 
 for unsafe in "${unsafe_strings[@]}"; do
   if grep -a -Fq "$unsafe" "$uboot_item"; then
@@ -210,6 +220,9 @@ if [ "$require_hdmi_dtb_aliases" = true ] && [ "$has_hdmi_dtb_aliases" != true ]
 fi
 if [ "$require_embedded_boot_bmp" = true ] && [ "$has_embedded_boot_bmp" != true ]; then
   fail 'package is missing required embedded boot.bmp path'
+fi
+if [ "$require_dvi_gate" = true ] && [ "$has_dvi_gate" != true ]; then
+  fail 'package is missing required DVI force gate'
 fi
 
 case "$profile" in

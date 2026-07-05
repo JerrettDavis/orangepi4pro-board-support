@@ -60,6 +60,7 @@ hdmi_normalize_disp_info_patch=${HDMI_NORMALIZE_DISP_INFO_PATCH:-"$repo_root/con
 fastlogo_diag_patch=${FASTLOGO_DIAG_PATCH:-"$repo_root/configs/u-boot/0044-export-fastlogo-diag.patch"}
 fastlogo_bootm_guard_patch=${FASTLOGO_BOOTM_GUARD_PATCH:-"$repo_root/configs/u-boot/0045-guard-drm-kernel-para-flush.patch"}
 hdmi_clock_dtb_alias_patch=${HDMI_CLOCK_DTB_ALIAS_PATCH:-"$repo_root/configs/u-boot/0046-add-sun60iw2-hdmi-clock-dtb-aliases.patch"}
+hdmi_force_dvi_patch=${HDMI_FORCE_DVI_PATCH:-"$repo_root/configs/u-boot/0047-force-dvi-tmds-from-env.patch"}
 apply_drm_reinit_patch=${APPLY_DRM_REINIT_PATCH:-false}
 applied_display_mode_patch=false
 applied_hdmi_clock_dtb_alias_patch=false
@@ -150,7 +151,6 @@ while [ "$#" -gt 0 ]; do
       mode=early-display-secondpass
       ;;
     --selector-logo)
-      mode=bootmenu
       selector_logo=true
       ;;
     --clean)
@@ -564,6 +564,7 @@ if [ "$mode" = early-display-secondpass ]; then
     "$hdmi_preserve_second_pass_mode_set_patch" \
     "$hdmi_normalize_disp_info_patch" \
     "$hdmi_clock_dtb_alias_patch" \
+    "$hdmi_force_dvi_patch" \
     "$bootgui_selector_patch" \
     "$bootgui_selector_all_displays_patch" \
     "$high_contrast_selector_patch" \
@@ -608,6 +609,8 @@ if [ "$mode" = early-display-secondpass ]; then
     'hdmi aspect info normalized for early boot' \
     'HDMI_ACTIVE_ASPECT_PICTURE' \
     'Keep U-Boot-compatible clock/reset aliases' \
+    'cyberdeck force DVI output mode' \
+    opi_hdmi_dvi_diag \
     'if (dw) {' \
     top20_ \
     'mdelay(8000)'; do

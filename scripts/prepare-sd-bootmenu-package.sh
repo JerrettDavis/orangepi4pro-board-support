@@ -131,6 +131,16 @@ elif [ "$bootgui_selector" = true ]; then
       printf 'ERROR: bootgui-selector artifact does not contain framebuffer commit diagnostics\n' >&2
       exit 1
     }
+  grep -aFq 'cyberdeck force DVI output mode' "$uboot" \
+    || {
+      printf 'ERROR: bootgui-selector artifact does not contain DVI-mode force gate\n' >&2
+      exit 1
+    }
+  grep -aFq 'opi_hdmi_dvi_diag' "$uboot" \
+    || {
+      printf 'ERROR: bootgui-selector artifact does not contain DVI-mode diagnostics\n' >&2
+      exit 1
+    }
   if ! {
     grep -aFq 'clk_tcon_tv' "$uboot" \
       && grep -aFq 'clk_bus_hdmi' "$uboot" \
@@ -228,6 +238,16 @@ elif [ "$bootgui_selector" = true ]; then
   grep -aFq 'opibootcommit=' "$output" \
     || {
       printf 'ERROR: bootgui-selector output does not contain framebuffer commit diagnostics\n' >&2
+      exit 1
+    }
+  grep -aFq 'cyberdeck force DVI output mode' "$output" \
+    || {
+      printf 'ERROR: bootgui-selector output does not contain DVI-mode force gate\n' >&2
+      exit 1
+    }
+  grep -aFq 'opi_hdmi_dvi_diag' "$output" \
+    || {
+      printf 'ERROR: bootgui-selector output does not contain DVI-mode diagnostics\n' >&2
       exit 1
     }
   if ! {
