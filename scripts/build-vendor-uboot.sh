@@ -593,6 +593,7 @@ if [ "$mode" = early-display-secondpass ]; then
     opi_snps_phy_diag \
     opi_bootselect \
     opibootselect=drm_direct \
+    opibootcommit= \
     'BOOTLOADER TEST SCREEN' \
     opi_hdmi_force_secondpass \
     'hdmisp=%s' \
