@@ -187,6 +187,14 @@ index 0000000000..4aa2b4f9ee
 +
 +	memset(draw, 0, sizeof(*draw));
 +
++	ret = uclass_first_device_err(UCLASS_VIDEO, &draw->dev);
++	if (ret) {
++		printf("opi_bootselect: no video device: %d\n", ret);
++	}
++
++	if (!ret)
++		draw->priv = dev_get_uclass_priv(draw->dev);
++
 +	draw->drm_fb = drm_fb_lock();
 +	if (draw->drm_fb && draw->drm_fb->dma_addr && draw->drm_fb->width &&
 +	    draw->drm_fb->height && draw->drm_fb->pitches[0]) {
@@ -200,17 +208,10 @@ index 0000000000..4aa2b4f9ee
 +		return 0;
 +	}
 +
-+	ret = uclass_first_device_err(UCLASS_VIDEO, &draw->dev);
-+	if (ret) {
-+		printf("opi_bootselect: no video device: %d\n", ret);
-+		return ret;
-+	}
-+
-+	draw->priv = dev_get_uclass_priv(draw->dev);
 +	if (!draw->priv || !draw->priv->fb || !draw->priv->xsize ||
 +	    !draw->priv->ysize) {
 +		printf("opi_bootselect: video framebuffer is not ready\n");
-+		return -ENODEV;
++		return ret ? ret : -ENODEV;
 +	}
 +
 +	draw->fb = draw->priv->fb;

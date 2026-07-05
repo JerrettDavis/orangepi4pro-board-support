@@ -38,11 +38,32 @@ index 4aa2b4f9ee..e2a30bc6c5 100644
 +static void opi_draw_all(struct opi_draw *fallback, int selected, int remaining)
 +{
 +	struct opi_draw_all_ctx ctx = { selected, remaining, 0 };
++	struct opi_draw video_draw;
 +	char diag[96];
++	int video_rendered = 0;
 +
-+	if (drm_fb_for_each_enabled(opi_draw_one_drm_fb, &ctx) >= 0 && ctx.rendered) {
-+		snprintf(diag, sizeof(diag), "opibootselect=drm_direct_r%d_%dx%d",
-+			 ctx.rendered, fallback->width, fallback->height);
++	if (drm_fb_for_each_enabled(opi_draw_one_drm_fb, &ctx) >= 0 && ctx.rendered)
++		;
++
++	if (fallback->dev && fallback->priv && fallback->priv->fb &&
++	    fallback->priv->xsize && fallback->priv->ysize) {
++		memset(&video_draw, 0, sizeof(video_draw));
++		video_draw.dev = fallback->dev;
++		video_draw.priv = fallback->priv;
++		video_draw.fb = fallback->priv->fb;
++		video_draw.flush_addr = (ulong)fallback->priv->fb;
++		video_draw.flush_size = fallback->priv->fb_size;
++		video_draw.width = fallback->priv->xsize;
++		video_draw.height = fallback->priv->ysize;
++		video_draw.line_length = fallback->priv->line_length;
++		video_draw.bpix = fallback->priv->bpix;
++		opi_draw_selector(&video_draw, selected, remaining);
++		video_rendered = 1;
++	}
++
++	if (ctx.rendered || video_rendered) {
++		snprintf(diag, sizeof(diag), "opibootselect=drm_direct_r%d_v%d_%dx%d",
++			 ctx.rendered, video_rendered, fallback->width, fallback->height);
 +		env_set("opi_bootselect_diag", diag);
 +		return;
 +	}
