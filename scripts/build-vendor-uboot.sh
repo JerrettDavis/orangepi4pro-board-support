@@ -493,6 +493,8 @@ if [ "$mode" = early-display-secondpass ]; then
     "$display_mode_patch" \
     "$hdmi_mode_clock_patch" \
     "$hdmi_bus_clock_patch" \
+    "$hdmi_pattern_status_patch" \
+    "$hdmi_pattern_reconfig_patch" \
     "$hdmi_tv_clock_fallback_patch" \
     "$tcon_hdmi_clock_sequence_patch" \
     "$hdmi_top_phy_autocal_patch" \
@@ -518,6 +520,8 @@ if [ "$mode" = early-display-secondpass ]; then
     '1024x600' \
     'mode_rate && (clk_rate == 0 || clk_rate == 24000000)' \
     'hdmi drv bus clock enable' \
+    opi_hdmi_pattern_diag \
+    opi_hdmi_pattern_reconfig \
     opi_hdmi_tv_clk \
     'sun60iw2 HDMI path fully drops the TCON' \
     '_top_phy_pll_auto_cal' \
