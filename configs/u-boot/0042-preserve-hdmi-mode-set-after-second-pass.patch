@@ -1,0 +1,12 @@
+diff --git a/drivers/video/drm/sunxi_drm_hdmi.c b/drivers/video/drm/sunxi_drm_hdmi.c
+--- a/drivers/video/drm/sunxi_drm_hdmi.c
++++ b/drivers/video/drm/sunxi_drm_hdmi.c
+@@ -913,6 +913,7 @@ int _sunxi_drm_hdmi_enable(struct sunxi_drm_connector *conn,
+ 		if (ret != 0) {
+ 			hdmi_err("sunxi hdmi second-pass driver enable failed\n");
+ 			return 0;
+ 		}
++		hdmi->hdmi_ctrl.drm_mode_set = 0x1;
+ 		if (dw) {
+ 			phy_stat0 = (u8)dw_read(PHY_STAT0);
+ 			mc_lockon = (u8)dw_read(MC_LOCKONCLOCK);
