@@ -1,0 +1,18 @@
+diff --git a/drivers/video/drm/sunxi_drm_hdmi.c b/drivers/video/drm/sunxi_drm_hdmi.c
+--- a/drivers/video/drm/sunxi_drm_hdmi.c
++++ b/drivers/video/drm/sunxi_drm_hdmi.c
+@@ -1073,9 +1073,12 @@ int __sunxi_hdmi_init_value(struct sunxi_drm_hdmi *hdmi)
+ 	init_info->eotf         = DISP_EOTF_GAMMA22; /* SDR */
+ 	init_info->cs           = DISP_BT709;
+ 	init_info->dvi_hdmi     = DISP_HDMI;
+-	init_info->range        = DISP_COLOR_RANGE_DEFAULT;
++	/* Match Linux sun60iw2 HDMI defaults so early boot and kernel agree. */
++	init_info->range        = (init_info->format == DISP_CSC_TYPE_RGB) ?
++				DISP_COLOR_RANGE_0_255 : DISP_COLOR_RANGE_16_235;
+ 	init_info->scan         = DISP_SCANINFO_NO_DATA;
+-//	init_info->aspect_ratio = HDMI_ACTIVE_ASPECT_PICTURE;
++	init_info->aspect_ratio = HDMI_ACTIVE_ASPECT_PICTURE;
++	hdmi_inf("hdmi disp info normalized for early boot\n");
+ 
+ 	hdmi->hdmi_ctrl.drv_enable   = 0x0;
+ 	hdmi->hdmi_ctrl.drv_pixel_format_cap  = BIT(SHDMI_RGB888_8BITS);
