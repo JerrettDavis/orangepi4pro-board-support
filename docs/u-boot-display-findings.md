@@ -2394,3 +2394,38 @@ delivering a valid visible signal until Linux later performs its full
   script-first` passed. The package still has script-first scan order, AW DRM
   logo support, fastlogo strings, the HDMI diagnostic pass-through strings, and
   no known unsafe recycle/reinit strings.
+
+2026-07-05 HDMI/TCON DTB clock-alias candidate:
+
+- New root-cause candidate: the U-Boot embedded DTB did not expose the clock
+  names that the vendor U-Boot HDMI/TCON drivers already request. TCON3 only
+  had `rst_bus_tcon`, while the driver also asks for `clk_tcon`; HDMI lacked
+  `clk_tcon_tv` and `clk_bus_hdmi`.
+- New patch:
+  `configs/u-boot/0046-add-sun60iw2-hdmi-clock-dtb-aliases.patch`
+- Patch behavior: add U-Boot-compatible clock aliases in
+  `sun60iw2p1-soc-system.dts` without adding Linux reset-controller semantics
+  or any display recycle/reinit path. The built DTB is decompiled after `make`
+  and the build fails unless the TCON3 and HDMI `clock-names` markers are
+  present.
+- Artifact:
+  `/home/orangepi/u-boot-dtb-alias-test/artifacts/early-display-secondpass/u-boot-sun60iw2p1.bin`
+- Artifact SHA-256:
+  `f348dce1d94ab8a308144ee0499f43a3da28ff0b71b14d223054b2c55c842846`
+- Candidate package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-early-display-secondpass-opibootselect-dtb-alias.fex`
+- Package SHA-256:
+  `aa6d5c7d6fcf5e43a9a5f5a0125ef3f09bb7dc9dc02bf26aa590069a0b0c94a2`
+- Validation result: `validate-boot-package-visual-path.sh --profile
+  script-first --require-hdmi-dtb-aliases` passed. The package contains
+  `opi_bootselect`, the high-contrast selector path, SNPS diagnostics,
+  framebuffer commit diagnostics, AW DRM logo support, script-first distro scan
+  order, and the compiled DTB strings `clk_tcon_tv`, `clk_bus_hdmi`,
+  `clk_tcon`, and `rst_bus_tcon`. It does not contain any currently blocked
+  unsafe display recycle/reinit string.
+- Intended next boot test: stage this package with the SNPS diagnostic
+  bootloader selector and a 30 second selector timeout, verify the SD TOC1 slot
+  byte-matches the package, then reboot. Expected visible evidence is a
+  pre-Linux high-contrast selector; if it remains black, the Linux cmdline
+  diagnostics should still identify whether the DTB aliases changed HDMI/TCON
+  lock state.

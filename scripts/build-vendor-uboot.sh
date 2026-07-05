@@ -59,8 +59,10 @@ hdmi_preserve_second_pass_mode_set_patch=${HDMI_PRESERVE_SECOND_PASS_MODE_SET_PA
 hdmi_normalize_disp_info_patch=${HDMI_NORMALIZE_DISP_INFO_PATCH:-"$repo_root/configs/u-boot/0043-normalize-hdmi-disp-info.patch"}
 fastlogo_diag_patch=${FASTLOGO_DIAG_PATCH:-"$repo_root/configs/u-boot/0044-export-fastlogo-diag.patch"}
 fastlogo_bootm_guard_patch=${FASTLOGO_BOOTM_GUARD_PATCH:-"$repo_root/configs/u-boot/0045-guard-drm-kernel-para-flush.patch"}
+hdmi_clock_dtb_alias_patch=${HDMI_CLOCK_DTB_ALIAS_PATCH:-"$repo_root/configs/u-boot/0046-add-sun60iw2-hdmi-clock-dtb-aliases.patch"}
 apply_drm_reinit_patch=${APPLY_DRM_REINIT_PATCH:-false}
 applied_display_mode_patch=false
+applied_hdmi_clock_dtb_alias_patch=false
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
 fix_uboot_header=${FIX_UBOOT_HEADER:-"$repo_root/scripts/fix-sunxi-uboot-header.py"}
 cross_compile=${CROSS_COMPILE:-arm-linux-gnueabi-}
@@ -561,6 +563,7 @@ if [ "$mode" = early-display-secondpass ]; then
     "$hdmi_force_early_logo_second_pass_patch" \
     "$hdmi_preserve_second_pass_mode_set_patch" \
     "$hdmi_normalize_disp_info_patch" \
+    "$hdmi_clock_dtb_alias_patch" \
     "$bootgui_selector_patch" \
     "$bootgui_selector_all_displays_patch" \
     "$high_contrast_selector_patch" \
@@ -570,6 +573,9 @@ if [ "$mode" = early-display-secondpass ]; then
       exit 1
     fi
     git -C "$work_dir" apply --recount "$patch"
+    if [ "$patch" = "$hdmi_clock_dtb_alias_patch" ]; then
+      applied_hdmi_clock_dtb_alias_patch=true
+    fi
   done
   for marker in \
     sunxi_drm_env \
@@ -601,6 +607,7 @@ if [ "$mode" = early-display-secondpass ]; then
     'hdmi->hdmi_ctrl.drm_mode_set = 0x1' \
     'hdmi aspect info normalized for early boot' \
     'HDMI_ACTIVE_ASPECT_PICTURE' \
+    'Keep U-Boot-compatible clock/reset aliases' \
     'if (dw) {' \
     top20_ \
     'mdelay(8000)'; do
@@ -611,6 +618,7 @@ if [ "$mode" = early-display-secondpass ]; then
       && ! grep -q "$marker" "$work_dir/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/phy_snps.c" \
       && ! grep -q "$marker" "$work_dir/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_mc.c" \
       && ! grep -q "$marker" "$work_dir/cmd/opi_bootselect.c" \
+      && ! grep -q "$marker" "$work_dir/arch/arm/dts/sun60iw2p1-soc-system.dts" \
       && ! grep -q "$marker" "$work_dir/board/sunxi/board_common.c"; then
       printf 'ERROR: early-display-secondpass marker missing: %s\n' "$marker" >&2
       exit 1
@@ -997,6 +1005,28 @@ if [ "$selector_logo" = true ]; then
 fi
 
 make "${make_common[@]}" -j"$jobs"
+
+if [ "$applied_hdmi_clock_dtb_alias_patch" = true ]; then
+  dtb="$work_dir/dts/dt.dtb"
+  dts_check="$build_root/dt-hdmi-clock-alias-check.dts"
+  if [ ! -r "$dtb" ]; then
+    printf 'ERROR: built U-Boot DTB not readable: %s\n' "$dtb" >&2
+    exit 1
+  fi
+  "${DTC:-/usr/bin/dtc}" -I dtb -O dts "$dtb" > "$dts_check" 2>/dev/null
+  for marker in \
+    'clock-names = "clk_tcon\0rst_bus_tcon";' \
+    'clock-names = "clk_tcon_tv\0clk_hdmi\0clk_hdmi_24M\0clk_bus_hdmi\0rst_main\0rst_sub";'; do
+    if ! grep -Fq "$marker" "$dts_check"; then
+      printf 'ERROR: U-Boot DTB missing HDMI/TCON clock alias marker: %s\n' "$marker" >&2
+      exit 1
+    fi
+  done
+  if grep -Fq 'clock-names = "rst_bus_tcon";' "$dts_check"; then
+    printf 'ERROR: U-Boot DTB still has stale TCON3-only reset clock name\n' >&2
+    exit 1
+  fi
+fi
 
 for uboot_image in \
   "$work_dir/u-boot.bin" \

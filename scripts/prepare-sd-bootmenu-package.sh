@@ -11,7 +11,7 @@ usage() {
 Prepare a file-only SD bootmenu package candidate.
 
 Usage:
-  scripts/prepare-sd-bootmenu-package.sh [--template FILE] [--uboot FILE] [--output FILE] [--embedded-logo]
+  scripts/prepare-sd-bootmenu-package.sh [--template FILE] [--uboot FILE] [--output FILE] [--embedded-logo|--bootgui-selector]
 
 Defaults:
   TEMPLATE=/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-bootmenu.fex
@@ -24,6 +24,7 @@ USAGE
 }
 
 embedded_logo=false
+bootgui_selector=false
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --template)
@@ -41,6 +42,9 @@ while [ "$#" -gt 0 ]; do
     --embedded-logo)
       embedded_logo=true
       ;;
+    --bootgui-selector)
+      bootgui_selector=true
+      ;;
     -h|--help)
       usage
       exit 0
@@ -53,6 +57,11 @@ while [ "$#" -gt 0 ]; do
   esac
   shift
 done
+
+if [ "$embedded_logo" = true ] && [ "$bootgui_selector" = true ]; then
+  printf 'ERROR: --embedded-logo and --bootgui-selector are mutually exclusive\n' >&2
+  exit 2
+fi
 
 [ -f "$template" ] || {
   printf 'ERROR: template package not found: %s\n' "$template" >&2
@@ -99,6 +108,36 @@ if [ "$embedded_logo" = true ]; then
   fi
   if grep -aFq 'BOOTLOADER TEST SCREEN' "$uboot"; then
     printf 'ERROR: embedded-logo artifact still contains high-contrast DM-video selector screen\n' >&2
+    exit 1
+  fi
+elif [ "$bootgui_selector" = true ]; then
+  grep -aFq 'opi_bootselect' "$uboot" \
+    || {
+      printf 'ERROR: bootgui-selector artifact does not contain opi_bootselect command\n' >&2
+      exit 1
+    }
+  grep -aFq 'BOOTLOADER TEST SCREEN' "$uboot" \
+    || {
+      printf 'ERROR: bootgui-selector artifact does not contain high-contrast selector test screen\n' >&2
+      exit 1
+    }
+  grep -aFq 'opi_snps_phy_diag' "$uboot" \
+    || {
+      printf 'ERROR: bootgui-selector artifact does not contain SNPS PHY diagnostics\n' >&2
+      exit 1
+    }
+  grep -aFq 'opibootcommit=' "$uboot" \
+    || {
+      printf 'ERROR: bootgui-selector artifact does not contain framebuffer commit diagnostics\n' >&2
+      exit 1
+    }
+  if ! {
+    grep -aFq 'clk_tcon_tv' "$uboot" \
+      && grep -aFq 'clk_bus_hdmi' "$uboot" \
+      && grep -aFq 'clk_tcon' "$uboot" \
+      && grep -aFq 'rst_bus_tcon' "$uboot"
+  }; then
+    printf 'ERROR: bootgui-selector artifact does not contain HDMI/TCON DTB clock aliases\n' >&2
     exit 1
   fi
 else
@@ -168,6 +207,36 @@ if [ "$embedded_logo" = true ]; then
   fi
   if grep -aFq 'BOOTLOADER TEST SCREEN' "$output"; then
     printf 'ERROR: embedded-logo output still contains high-contrast DM-video selector screen\n' >&2
+    exit 1
+  fi
+elif [ "$bootgui_selector" = true ]; then
+  grep -aFq 'opi_bootselect' "$output" \
+    || {
+      printf 'ERROR: bootgui-selector output does not contain opi_bootselect command\n' >&2
+      exit 1
+    }
+  grep -aFq 'BOOTLOADER TEST SCREEN' "$output" \
+    || {
+      printf 'ERROR: bootgui-selector output does not contain high-contrast selector test screen\n' >&2
+      exit 1
+    }
+  grep -aFq 'opi_snps_phy_diag' "$output" \
+    || {
+      printf 'ERROR: bootgui-selector output does not contain SNPS PHY diagnostics\n' >&2
+      exit 1
+    }
+  grep -aFq 'opibootcommit=' "$output" \
+    || {
+      printf 'ERROR: bootgui-selector output does not contain framebuffer commit diagnostics\n' >&2
+      exit 1
+    }
+  if ! {
+    grep -aFq 'clk_tcon_tv' "$output" \
+      && grep -aFq 'clk_bus_hdmi' "$output" \
+      && grep -aFq 'clk_tcon' "$output" \
+      && grep -aFq 'rst_bus_tcon' "$output"
+  }; then
+    printf 'ERROR: bootgui-selector output does not contain HDMI/TCON DTB clock aliases\n' >&2
     exit 1
   fi
 else

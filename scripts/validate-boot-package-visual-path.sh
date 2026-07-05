@@ -7,13 +7,14 @@ profile=report
 device=
 seek_blocks=2050
 block_size=8192
+require_hdmi_dtb_aliases=false
 
 usage() {
   cat <<'USAGE'
 Inspect an Orange Pi 4 Pro TOC1 package for bootloader visual-path risk.
 
 Usage:
-  scripts/validate-boot-package-visual-path.sh --package FILE [--profile report|safe-baseline|script-first|fastlogo-scriptfirst] [--device /dev/mmcblk1]
+  scripts/validate-boot-package-visual-path.sh --package FILE [--profile report|safe-baseline|script-first|fastlogo-scriptfirst] [--require-hdmi-dtb-aliases] [--device /dev/mmcblk1]
 
 Profiles:
   report         Print package metadata and visual-path string findings only.
@@ -49,6 +50,9 @@ while [ "$#" -gt 0 ]; do
     --device)
       device=${2:-}
       shift
+      ;;
+    --require-hdmi-dtb-aliases)
+      require_hdmi_dtb_aliases=true
       ;;
     -h|--help)
       usage
@@ -109,6 +113,7 @@ has_bootgui=false
 has_fastlogo=false
 has_fastlogo_diag=false
 has_unsafe=false
+has_hdmi_dtb_aliases=false
 
 if grep -a -Fq 'sunxi_show_logo' "$uboot_item"; then
   has_aw_drm=true
@@ -121,6 +126,12 @@ if grep -a -Eq 'LogoRegData.bin|create_fastlogo_inst|display_fastlogo|bootlogo.b
 fi
 if grep -a -Fq 'opi_fastlogo_diag' "$uboot_item"; then
   has_fastlogo_diag=true
+fi
+if grep -a -Fq 'clk_tcon_tv' "$uboot_item" \
+  && grep -a -Fq 'clk_bus_hdmi' "$uboot_item" \
+  && grep -a -Fq 'clk_tcon' "$uboot_item" \
+  && grep -a -Fq 'rst_bus_tcon' "$uboot_item"; then
+  has_hdmi_dtb_aliases=true
 fi
 
 unsafe_strings=(
@@ -148,6 +159,7 @@ printf 'has_aw_drm_sunxi_show_logo=%s\n' "$has_aw_drm"
 printf 'has_bootgui_symbols=%s\n' "$has_bootgui"
 printf 'has_fastlogo_strings=%s\n' "$has_fastlogo"
 printf 'has_fastlogo_diag=%s\n' "$has_fastlogo_diag"
+printf 'has_hdmi_dtb_clock_aliases=%s\n' "$has_hdmi_dtb_aliases"
 
 for unsafe in "${unsafe_strings[@]}"; do
   if grep -a -Fq "$unsafe" "$uboot_item"; then
@@ -182,6 +194,9 @@ fi
 
 if [ "$has_unsafe" = true ]; then
   fail 'package contains a known unsafe visual path or hash'
+fi
+if [ "$require_hdmi_dtb_aliases" = true ] && [ "$has_hdmi_dtb_aliases" != true ]; then
+  fail 'package is missing required HDMI/TCON DTB clock aliases'
 fi
 
 case "$profile" in

@@ -1,0 +1,39 @@
+diff --git a/arch/arm/dts/sun60iw2p1-soc-system.dts b/arch/arm/dts/sun60iw2p1-soc-system.dts
+index 9d4f8b0838..fb58a7e626 100644
+--- a/arch/arm/dts/sun60iw2p1-soc-system.dts
++++ b/arch/arm/dts/sun60iw2p1-soc-system.dts
+@@ -1109,8 +1109,9 @@
+ 			compatible = "allwinner,tcon-tv";
+ 			reg = <0x0 0x05730000 0x0 0x1000>;
+ 			interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
+-			clocks = <&clk_tcon_tv0>;
+-			clock-names = "rst_bus_tcon";
++			clocks = <&clk_tcon_tv0>,
++				<&clk_tcon_tv0>;
++			clock-names = "clk_tcon", "rst_bus_tcon";
+ 
+ 			top = <&vo1>;
+ 			status = "disabled";
+@@ -1216,14 +1217,19 @@
+ 			compatible = "allwinner,sunxi-hdmi";
+ 			reg = <0x0 0x5520000 0x0 0x100000>;
+ 			interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
+-			clocks = <&clk_hdmi_gate>,
++			clocks = <&clk_tcon_tv0>,
++				<&clk_hdmi_gate>,
+ 				<&clk_hdmi_sfr>,
++				<&clk_hdmi_tv>,
+ 				<&clk_hdmi_main_rst>,
+ 				<&clk_hdmi_sub_rst>;
+-			clock-names = "clk_hdmi",
++			clock-names = "clk_tcon_tv",
++				"clk_hdmi",
+ 				"clk_hdmi_24M",
++				"clk_bus_hdmi",
+ 				"rst_main",
+ 				"rst_sub";
+ 
++			/* Keep U-Boot-compatible clock/reset aliases; Linux uses reset controls. */
+ 			assigned-clocks = <&clk_hdmi_gate>;
+ 			assigned-clock-rates = <0>, <0>;
+ 			/*power-domains = <&pd1 A523_PCK_VO0>;*/
