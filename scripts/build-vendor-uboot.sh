@@ -50,6 +50,7 @@ early_display_delay_patch=${EARLY_DISPLAY_DELAY_PATCH:-"$repo_root/configs/u-boo
 hdmi_stale_flag_clear_patch=${HDMI_STALE_FLAG_CLEAR_PATCH:-"$repo_root/configs/u-boot/0035-clear-stale-hdmi-drv-enable.patch"}
 hdmi_second_pass_patch=${HDMI_SECOND_PASS_PATCH:-"$repo_root/configs/u-boot/0036-hdmi-enable-second-pass-if-unlocked.patch"}
 hdmi_second_pass_diag_patch=${HDMI_SECOND_PASS_DIAG_PATCH:-"$repo_root/configs/u-boot/0037-export-hdmi-enable-secondpass-diag.patch"}
+hdmi_snps_phy_diag_patch=${HDMI_SNPS_PHY_DIAG_PATCH:-"$repo_root/configs/u-boot/0038-export-snps-phy-config-diag.patch"}
 apply_drm_reinit_patch=${APPLY_DRM_REINIT_PATCH:-false}
 applied_display_mode_patch=false
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
@@ -499,6 +500,7 @@ if [ "$mode" = early-display-secondpass ]; then
     "$hdmi_stale_flag_clear_patch" \
     "$hdmi_second_pass_patch" \
     "$hdmi_second_pass_diag_patch" \
+    "$hdmi_snps_phy_diag_patch" \
     "$early_display_delay_patch"; do
     if [ ! -r "$patch" ]; then
       printf 'ERROR: early-display-secondpass patch not readable: %s\n' "$patch" >&2
@@ -522,12 +524,14 @@ if [ "$mode" = early-display-secondpass ]; then
     'second-pass driver disable' \
     opi_hdmi_secondpass \
     opi_hdmi_drv_diag \
+    opi_snps_phy_diag \
     top20_ \
     'mdelay(8000)'; do
     if ! grep -q "$marker" "$work_dir/drivers/video/drm/sunxi_drm_drv.c" \
       && ! grep -q "$marker" "$work_dir/drivers/video/drm/sunxi_drm_hdmi.c" \
       && ! grep -q "$marker" "$work_dir/drivers/video/drm/sunxi_device/sunxi_tcon.c" \
       && ! grep -q "$marker" "$work_dir/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/phy_top.c" \
+      && ! grep -q "$marker" "$work_dir/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/phy_snps.c" \
       && ! grep -q "$marker" "$work_dir/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_mc.c" \
       && ! grep -q "$marker" "$work_dir/board/sunxi/board_common.c"; then
       printf 'ERROR: early-display-secondpass marker missing: %s\n' "$marker" >&2
