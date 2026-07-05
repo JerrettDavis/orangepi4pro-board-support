@@ -29,6 +29,9 @@ diff --git a/drivers/video/drm/sunxi_drm_hdmi.c b/drivers/video/drm/sunxi_drm_hd
 +		hdmi_wrn("hdmi first enable unlocked phy%02x lock%02x; second pass\n",
 +			 phy_stat0, mc_lockon);
 +
++		ret = _sunxi_drv_hdmi_disable(hdmi);
++		if (ret != 0)
++			hdmi_wrn("sunxi hdmi second-pass driver disable failed\n");
 +		sunxi_tcon_mode_exit(hdmi->tcon_dev);
 +		_sunxi_drv_hdmi_clock_off(hdmi);
 +		mdelay(10);

@@ -2235,3 +2235,39 @@ delivering a valid visible signal until Linux later performs its full
   script-first` passed. The package still has exactly one script-first scan
   order, AW DRM logo support, fastlogo strings, and none of the known unsafe
   display recycle/reinit strings.
+- Reboot result: failed visually but produced the needed evidence. U-Boot ran
+  the second pass:
+  `opi_hdmisp=run,firstphy00,firstlock00,secondphy00,secondlock00`.
+  `_sunxi_drv_hdmi_enable()` returned success:
+  `opi_hdmidrv_drv=ret0,phy00,lock00,rst00,out0,clk1`. This proves the second
+  pass did reach `sunxi_hdmi_config()` and that the function returned `0`, but
+  the SNPS HDMI core still had reset/lock state at zero afterward. Linux then
+  performed its normal mode-change atomic disable/enable and immediately locked
+  the SNPS PHY.
+
+2026-07-05 HDMI second-pass local-disable candidate:
+
+- Patch refinement: `configs/u-boot/0036-hdmi-enable-second-pass-if-unlocked.patch`
+  now calls the local `_sunxi_drv_hdmi_disable()` before TCON mode exit and HDMI
+  clock cycling. That function runs `sunxi_hdmi_disconfig()`, which mutes AV,
+  puts the PHY in standby, disables MC clocks, resets the HDMI core, and clears
+  the HDMI display info.
+- This deliberately stays narrower than the unsafe `sunxi_drm hdmi_recycle`
+  command. It does not call board-level `display_disable()` and does not add a
+  boot-script recycle command. It only makes the existing second-pass path match
+  the Linux-successful atomic disable/enable shape more closely.
+- Expected evidence after reboot: if this resolves the missing HDMI-core reset,
+  U-Boot should show a visible colorbar before Linux or at least export
+  `secondphy`/`secondlock` values that move away from zero. If it still reports
+  `ret0` with `rst00/lock00`, the next target is inside `snps_phy_config()` or
+  lower DesignWare reset/PHY register sequencing.
+- Artifact SHA-256:
+  `b9bfed5c87f98ec83cb699afcde372fd6165ff9e9673a86d4434bf08949d6dd6`
+- Candidate package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-early-display-secondpass-localdisable.fex`
+- Package SHA-256:
+  `b63610fa3bfe2fb10f117a5335c866b8003c86769dad1a51749e14064c1b8bd5`
+- Validation result: `validate-boot-package-visual-path.sh --profile
+  script-first` passed. The package still has script-first scan order, AW DRM
+  logo support, fastlogo strings, the HDMI diagnostic pass-through strings, and
+  no known unsafe recycle/reinit strings.

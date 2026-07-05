@@ -519,6 +519,7 @@ if [ "$mode" = early-display-secondpass ]; then
     'disp_cfg.format = hdmi->disp_config.format' \
     'hdmi drv stale flag reset' \
     'hdmi first enable unlocked' \
+    'second-pass driver disable' \
     opi_hdmi_secondpass \
     opi_hdmi_drv_diag \
     top20_ \
