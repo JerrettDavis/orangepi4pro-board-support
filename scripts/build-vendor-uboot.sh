@@ -51,6 +51,7 @@ hdmi_stale_flag_clear_patch=${HDMI_STALE_FLAG_CLEAR_PATCH:-"$repo_root/configs/u
 hdmi_second_pass_patch=${HDMI_SECOND_PASS_PATCH:-"$repo_root/configs/u-boot/0036-hdmi-enable-second-pass-if-unlocked.patch"}
 hdmi_second_pass_diag_patch=${HDMI_SECOND_PASS_DIAG_PATCH:-"$repo_root/configs/u-boot/0037-export-hdmi-enable-secondpass-diag.patch"}
 hdmi_snps_phy_diag_patch=${HDMI_SNPS_PHY_DIAG_PATCH:-"$repo_root/configs/u-boot/0038-export-snps-phy-config-diag.patch"}
+hdmi_no_sw_init_guard_patch=${HDMI_NO_SW_INIT_GUARD_PATCH:-"$repo_root/configs/u-boot/0039-read-hdmi-registers-without-sw-init.patch"}
 apply_drm_reinit_patch=${APPLY_DRM_REINIT_PATCH:-false}
 applied_display_mode_patch=false
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
@@ -501,6 +502,7 @@ if [ "$mode" = early-display-secondpass ]; then
     "$hdmi_second_pass_patch" \
     "$hdmi_second_pass_diag_patch" \
     "$hdmi_snps_phy_diag_patch" \
+    "$hdmi_no_sw_init_guard_patch" \
     "$early_display_delay_patch"; do
     if [ ! -r "$patch" ]; then
       printf 'ERROR: early-display-secondpass patch not readable: %s\n' "$patch" >&2
@@ -525,6 +527,7 @@ if [ "$mode" = early-display-secondpass ]; then
     opi_hdmi_secondpass \
     opi_hdmi_drv_diag \
     opi_snps_phy_diag \
+    'if (dw) {' \
     top20_ \
     'mdelay(8000)'; do
     if ! grep -q "$marker" "$work_dir/drivers/video/drm/sunxi_drm_drv.c" \

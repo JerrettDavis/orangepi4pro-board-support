@@ -1,0 +1,48 @@
+diff --git a/drivers/video/drm/sunxi_drm_hdmi.c b/drivers/video/drm/sunxi_drm_hdmi.c
+--- a/drivers/video/drm/sunxi_drm_hdmi.c
++++ b/drivers/video/drm/sunxi_drm_hdmi.c
+@@ -433,7 +433,7 @@ static int _sunxi_drv_hdmi_enable(struct sunxi_drm_hdmi *hdmi)
+ 
+ 	if (hdmi->hdmi_ctrl.drv_enable) {
+ 		dw = &hdmi->hdmi_core.dw_hdmi;
+-		if (dw && dw->sw_init) {
++		if (dw) {
+ 			phy_stat0 = (u8)dw_read(PHY_STAT0);
+ 			mc_lockon = (u8)dw_read(MC_LOCKONCLOCK);
+ 		}
+@@ -465,7 +465,7 @@ static int _sunxi_drv_hdmi_enable(struct sunxi_drm_hdmi *hdmi)
+ 	ret = sunxi_hdmi_config();
+ 
+ 	dw = &hdmi->hdmi_core.dw_hdmi;
+-	if (dw && dw->sw_init) {
++	if (dw) {
+ 		phy_stat0 = (u8)dw_read(PHY_STAT0);
+ 		mc_lockon = (u8)dw_read(MC_LOCKONCLOCK);
+ 		mc_phyrstz = (u8)dw_read(MC_PHYRSTZ);
+@@ -874,7 +874,7 @@ int _sunxi_drm_hdmi_enable(struct sunxi_drm_connector *conn,
+ 	}
+ 
+ 	dw = &hdmi->hdmi_core.dw_hdmi;
+-	if (dw && dw->sw_init) {
++	if (dw) {
+ 		phy_stat0 = (u8)dw_read(PHY_STAT0);
+ 		mc_lockon = (u8)dw_read(MC_LOCKONCLOCK);
+ 		link_locked = (phy_stat0 & PHY_STAT0_TX_PHY_LOCK_MASK) &&
+@@ -912,7 +912,7 @@ int _sunxi_drm_hdmi_enable(struct sunxi_drm_connector *conn,
+ 			hdmi_err("sunxi hdmi second-pass driver enable failed\n");
+ 			return 0;
+ 		}
+-		if (dw && dw->sw_init) {
++		if (dw) {
+ 			phy_stat0 = (u8)dw_read(PHY_STAT0);
+ 			mc_lockon = (u8)dw_read(MC_LOCKONCLOCK);
+ 		}
+@@ -1383,7 +1383,7 @@ static int do_sunxi_hdmi_env(struct cmd_tbl_s *cmdtp, int flag,
+ 		top_pat1 = top_phy_read(12);
+ 		top_lockreg = top_phy_read(16);
+ 	}
+-	if (dw && dw->sw_init) {
++	if (dw) {
+ 		phy_conf0 = (u8)dw_read(PHY_CONF0);
+ 		phy_stat0 = (u8)dw_read(PHY_STAT0);
+ 		mc_phyrstz = (u8)dw_read(MC_PHYRSTZ);
