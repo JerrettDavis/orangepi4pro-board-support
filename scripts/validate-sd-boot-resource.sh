@@ -17,8 +17,8 @@ Usage:
   scripts/validate-sd-boot-resource.sh [--device /dev/mmcblk1] [--source-logo FILE]
 
 This is read-only. It checks the softw411 MBR copies at sector 40960, mounts
-the boot-resource FAT image read-only, and verifies bootlogo.bmp, boot.bmp, and
-boot1.bmp against the expected source logo.
+the boot-resource FAT image read-only, and verifies bootlogo.bmp, boot.bmp,
+boot1.bmp, and fastbootlogo.bmp against the expected source logo.
 USAGE
 }
 
@@ -141,7 +141,7 @@ PY
 mkdir -p "$mount_dir"
 loopdev=$(losetup --find --show "$fat_path")
 mount -o ro "$loopdev" "$mount_dir"
-for file in bootlogo.bmp boot.bmp boot1.bmp; do
+for file in bootlogo.bmp boot.bmp boot1.bmp fastbootlogo.bmp; do
   cmp "$source_logo" "$mount_dir/$file"
 done
 

@@ -545,8 +545,7 @@ if [ "$mode" = early-display-secondpass ]; then
     'hdmisp=%s' \
     'env_set("opi_hdmi_force_secondpass", "1")' \
     'hdmi->hdmi_ctrl.drm_mode_set = 0x1' \
-    'hdmi disp info normalized for early boot' \
-    'DISP_COLOR_RANGE_0_255' \
+    'hdmi aspect info normalized for early boot' \
     'HDMI_ACTIVE_ASPECT_PICTURE' \
     'if (dw) {' \
     top20_ \

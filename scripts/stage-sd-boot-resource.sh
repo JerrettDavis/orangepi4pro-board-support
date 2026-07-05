@@ -22,7 +22,8 @@ Defaults to dry-run mode. In write mode, this script:
   - backs up the reserved SD range it will modify;
   - writes four 16 KiB Allwinner softw411 MBR copies at absolute sector 40960;
   - writes a FAT16 boot-resource filesystem starting at absolute sector 41088;
-  - copies bootlogo.bmp, boot.bmp, and boot1.bmp into that filesystem;
+  - copies bootlogo.bmp, boot.bmp, boot1.bmp, and fastbootlogo.bmp into that
+    filesystem;
   - verifies the written MBR magic, FAT label, and logo files by readback.
 
 It never writes boot0, TOC1/U-Boot, SPI/MTD, NVMe, partition tables, or the
@@ -186,6 +187,7 @@ mount "$loopdev" "$mount_dir"
 install -m 0644 "$source_logo" "$mount_dir/bootlogo.bmp"
 install -m 0644 "$source_logo" "$mount_dir/boot.bmp"
 install -m 0644 "$source_logo" "$mount_dir/boot1.bmp"
+install -m 0644 "$source_logo" "$mount_dir/fastbootlogo.bmp"
 sync
 umount "$mount_dir"
 losetup -d "$loopdev"
@@ -231,7 +233,7 @@ cmp "$fat_path" "$verify_fat"
 
 loopdev=$(losetup --find --show "$verify_fat")
 mount "$loopdev" "$mount_dir"
-for file in bootlogo.bmp boot.bmp boot1.bmp; do
+for file in bootlogo.bmp boot.bmp boot1.bmp fastbootlogo.bmp; do
   cmp "$source_logo" "$mount_dir/$file"
 done
 umount "$mount_dir"
