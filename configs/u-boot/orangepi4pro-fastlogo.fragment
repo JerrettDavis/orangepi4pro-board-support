@@ -1,0 +1,10 @@
+CONFIG_SUNXI_TV_FASTLOGO=y
+# CONFIG_SUNXI_FASTLOGO_JPEG is not set
+# CONFIG_DM_VIDEO is not set
+# CONFIG_BACKLIGHT_PWM is not set
+# CONFIG_AW_DRM is not set
+# CONFIG_AW_DRM_DE is not set
+# CONFIG_AW_DRM_TCON is not set
+# CONFIG_AW_DRM_TCON_TOP is not set
+# CONFIG_AW_DRM_HDMI_TX is not set
+# CONFIG_AW_DRM_HDMI20 is not set

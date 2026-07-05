@@ -12,6 +12,7 @@ artifact_dir=${ARTIFACT_DIR:-"$build_root/artifacts"}
 fragment=${FRAGMENT:-"$repo_root/configs/u-boot/orangepi4pro-bootmenu.fragment"}
 bootgui_fragment=${BOOTGUI_FRAGMENT:-"$repo_root/configs/u-boot/orangepi4pro-bootgui.fragment"}
 awdrm_bootgui_fragment=${AWDRM_BOOTGUI_FRAGMENT:-"$repo_root/configs/u-boot/orangepi4pro-awdrm-bootgui.fragment"}
+fastlogo_fragment=${FASTLOGO_FRAGMENT:-"$repo_root/configs/u-boot/orangepi4pro-fastlogo.fragment"}
 bootmenu_patch=${BOOTMENU_PATCH:-"$repo_root/configs/u-boot/0001-distro-scan-scripts-before-extlinux.patch"}
 display_diag_patch=${DISPLAY_DIAG_PATCH:-"$repo_root/configs/u-boot/0002-add-sunxi-drm-env-diag.patch"}
 display_mode_patch=${DISPLAY_MODE_PATCH:-"$repo_root/configs/u-boot/0003-use-cyberdeck-hdmi-default-mode.patch"}
@@ -56,6 +57,8 @@ hdmi_force_second_pass_patch=${HDMI_FORCE_SECOND_PASS_PATCH:-"$repo_root/configs
 hdmi_force_early_logo_second_pass_patch=${HDMI_FORCE_EARLY_LOGO_SECOND_PASS_PATCH:-"$repo_root/configs/u-boot/0041-force-early-logo-hdmi-second-pass.patch"}
 hdmi_preserve_second_pass_mode_set_patch=${HDMI_PRESERVE_SECOND_PASS_MODE_SET_PATCH:-"$repo_root/configs/u-boot/0042-preserve-hdmi-mode-set-after-second-pass.patch"}
 hdmi_normalize_disp_info_patch=${HDMI_NORMALIZE_DISP_INFO_PATCH:-"$repo_root/configs/u-boot/0043-normalize-hdmi-disp-info.patch"}
+fastlogo_diag_patch=${FASTLOGO_DIAG_PATCH:-"$repo_root/configs/u-boot/0044-export-fastlogo-diag.patch"}
+fastlogo_bootm_guard_patch=${FASTLOGO_BOOTM_GUARD_PATCH:-"$repo_root/configs/u-boot/0045-guard-drm-kernel-para-flush.patch"}
 apply_drm_reinit_patch=${APPLY_DRM_REINIT_PATCH:-false}
 applied_display_mode_patch=false
 selector_logo_generator=${SELECTOR_LOGO_GENERATOR:-"$repo_root/scripts/generate-uboot-selector-logo.py"}
@@ -68,7 +71,7 @@ usage() {
   cat <<'USAGE'
 Build the Orange Pi vendor U-Boot tree for sun60iw2 without flashing anything.
 
-Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu|--scriptfirst-logo|--scriptfirst-diag|--scriptfirst-diag-modeclock|--bootgui-scriptfirst|--bootgui-hpd-delay|--logo-delay-diag|--early-display-delay|--early-display-clockdiag|--early-display-linuxseq|--early-display-enablefix|--early-display-secondpass] [--selector-logo] [--clean]
+Usage: scripts/build-vendor-uboot.sh [--baseline|--bootmenu|--scriptfirst-logo|--scriptfirst-diag|--scriptfirst-diag-modeclock|--fastlogo-scriptfirst|--bootgui-scriptfirst|--bootgui-hpd-delay|--logo-delay-diag|--early-display-delay|--early-display-clockdiag|--early-display-linuxseq|--early-display-enablefix|--early-display-secondpass] [--selector-logo] [--clean]
 
 Environment overrides:
   SOURCE_DIR       Existing local vendor tree. Default:
@@ -81,6 +84,9 @@ Environment overrides:
   DTC              Device tree compiler. Default: /usr/bin/dtc
   JOBS             make -j value. Default: nproc
   BOOTGUI_FRAGMENT Kconfig fragment for vendor BOOT_GUI display testing.
+  FASTLOGO_FRAGMENT
+                   Kconfig fragment for the vendor direct-register fastlogo
+                   display path.
   APPLY_DRM_REINIT_PATCH
                    Apply the unsafe 0017 full DRM reinit diagnostic. Default:
                    false. Requires explicit opt-in because one package using
@@ -113,6 +119,9 @@ while [ "$#" -gt 0 ]; do
       ;;
     --scriptfirst-diag-modeclock)
       mode=scriptfirst-diag-modeclock
+      ;;
+    --fastlogo-scriptfirst)
+      mode=fastlogo-scriptfirst
       ;;
     --bootgui-scriptfirst)
       mode=bootgui-scriptfirst
@@ -208,12 +217,50 @@ mkdir -p "$artifact_dir/lichee-chip/orangepi4pro/bin" "$artifact_dir/lichee-plat
 
 make "${make_common[@]}" "$defconfig"
 
-if [ "$mode" = bootmenu ] || [ "$mode" = scriptfirst-logo ] || [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ] || [ "$mode" = bootgui-scriptfirst ] || [ "$mode" = bootgui-hpd-delay ] || [ "$mode" = logo-delay-diag ] || [ "$mode" = early-display-delay ] || [ "$mode" = early-display-clockdiag ] || [ "$mode" = early-display-linuxseq ] || [ "$mode" = early-display-enablefix ] || [ "$mode" = early-display-secondpass ]; then
+if [ "$mode" = bootmenu ] || [ "$mode" = scriptfirst-logo ] || [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ] || [ "$mode" = fastlogo-scriptfirst ] || [ "$mode" = bootgui-scriptfirst ] || [ "$mode" = bootgui-hpd-delay ] || [ "$mode" = logo-delay-diag ] || [ "$mode" = early-display-delay ] || [ "$mode" = early-display-clockdiag ] || [ "$mode" = early-display-linuxseq ] || [ "$mode" = early-display-enablefix ] || [ "$mode" = early-display-secondpass ]; then
   if [ ! -r "$bootmenu_patch" ]; then
     printf 'ERROR: bootmenu source patch not readable: %s\n' "$bootmenu_patch" >&2
     exit 1
   fi
   git -C "$work_dir" apply "$bootmenu_patch"
+fi
+
+if [ "$mode" = fastlogo-scriptfirst ]; then
+  if [ ! -r "$fastlogo_fragment" ]; then
+    printf 'ERROR: fastlogo config fragment not readable: %s\n' "$fastlogo_fragment" >&2
+    exit 1
+  fi
+  if [ ! -r "$fastlogo_diag_patch" ]; then
+    printf 'ERROR: fastlogo diagnostic patch not readable: %s\n' "$fastlogo_diag_patch" >&2
+    exit 1
+  fi
+  if [ ! -r "$fastlogo_bootm_guard_patch" ]; then
+    printf 'ERROR: fastlogo bootm guard patch not readable: %s\n' "$fastlogo_bootm_guard_patch" >&2
+    exit 1
+  fi
+  git -C "$work_dir" apply --recount "$fastlogo_diag_patch"
+  git -C "$work_dir" apply --recount "$fastlogo_bootm_guard_patch"
+  grep -q 'opi_fastlogo_diag' "$work_dir/board/sunxi/board_common.c" || {
+    printf 'ERROR: fastlogo diagnostic patch did not apply cleanly\n' >&2
+    exit 1
+  }
+  grep -q '#ifdef CONFIG_AW_DRM' "$work_dir/arch/arm/lib/bootm.c" || {
+    printf 'ERROR: fastlogo bootm guard patch did not apply cleanly\n' >&2
+    exit 1
+  }
+  (
+    cd "$work_dir"
+    CROSS_COMPILE="$cross_compile" ./scripts/kconfig/merge_config.sh .config "$fastlogo_fragment"
+  )
+  make "${make_common[@]}" olddefconfig
+  grep -q '^CONFIG_SUNXI_TV_FASTLOGO=y$' "$work_dir/.config" || {
+    printf 'ERROR: fastlogo config did not enable CONFIG_SUNXI_TV_FASTLOGO\n' >&2
+    exit 1
+  }
+  if grep -q '^CONFIG_AW_DRM=y$' "$work_dir/.config" || grep -q '^CONFIG_DM_VIDEO=y$' "$work_dir/.config"; then
+    printf 'ERROR: fastlogo profile must not link AW_DRM or DM_VIDEO\n' >&2
+    exit 1
+  fi
 fi
 
 if [ "$mode" = scriptfirst-diag ] || [ "$mode" = scriptfirst-diag-modeclock ]; then
@@ -948,7 +995,7 @@ for artifact in \
   fi
 done
 
-grep -E 'CONFIG_(CMD_BOOTMENU|AUTOBOOT_MENU_SHOW|USB_KEYBOARD|SYS_USB_EVENT_POLL|DM_KEYBOARD|EFI_LOADER|BOOTDELAY|DISP2_SUNXI|HDMI2_DISP2_SUNXI|DEFAULT_PHY|BOOT_GUI|UPDATE_DISPLAY_MODE|CMD_SUNXI_BMP|SUNXI_DRM_SUPPORT|DM_VIDEO|AW_DRM)=' \
+grep -E 'CONFIG_(CMD_BOOTMENU|AUTOBOOT_MENU_SHOW|USB_KEYBOARD|SYS_USB_EVENT_POLL|DM_KEYBOARD|EFI_LOADER|BOOTDELAY|DISP2_SUNXI|HDMI2_DISP2_SUNXI|DEFAULT_PHY|BOOT_GUI|UPDATE_DISPLAY_MODE|CMD_SUNXI_BMP|SUNXI_DRM_SUPPORT|DM_VIDEO|AW_DRM|SUNXI_TV_FASTLOGO|SUNXI_FASTLOGO_JPEG)=' \
   "$work_dir/.config" > "$artifact_dir/$artifact_mode/config-summary.txt" || true
 
 cat > "$artifact_dir/$artifact_mode/SOURCE.txt" <<EOF
@@ -963,6 +1010,7 @@ applied_display_mode_patch=$applied_display_mode_patch
 apply_drm_reinit_patch=$apply_drm_reinit_patch
 bootgui_fragment=$bootgui_fragment
 awdrm_bootgui_fragment=$awdrm_bootgui_fragment
+fastlogo_fragment=$fastlogo_fragment
 cross_compile=$cross_compile
 dtc=${DTC:-/usr/bin/dtc}
 EOF

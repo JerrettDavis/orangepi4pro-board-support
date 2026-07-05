@@ -1,0 +1,12 @@
+diff --git a/arch/arm/lib/bootm.c b/arch/arm/lib/bootm.c
+--- a/arch/arm/lib/bootm.c
++++ b/arch/arm/lib/bootm.c
+@@ -401,7 +401,9 @@ static void boot_jump_linux(bootm_headers_t *images, int flag)
+ 	announce_and_cleanup(fake);
+ 
+ 	//run_command("sunxi_show_logo", 0);
++#ifdef CONFIG_AW_DRM
+ 	sunxi_drm_kernel_para_flush();
++#endif
+ 
+ 	if (!fake) {

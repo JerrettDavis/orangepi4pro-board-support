@@ -3,6 +3,8 @@ set -euo pipefail
 
 device=/dev/mmcblk1
 source_logo=/boot/logo.bmp
+source_regbin=
+require_regbin=false
 logical_offset=40960
 mbr_copies=4
 mbr_copy_sectors=32
@@ -14,11 +16,13 @@ usage() {
 Validate the Allwinner SD boot-resource area used by vendor U-Boot logos.
 
 Usage:
-  scripts/validate-sd-boot-resource.sh [--device /dev/mmcblk1] [--source-logo FILE]
+  scripts/validate-sd-boot-resource.sh [--device /dev/mmcblk1] [--source-logo FILE] [--source-regbin FILE] [--require-regbin]
 
 This is read-only. It checks the softw411 MBR copies at sector 40960, mounts
 the boot-resource FAT image read-only, and verifies bootlogo.bmp, boot.bmp,
-boot1.bmp, and fastbootlogo.bmp against the expected source logo.
+boot1.bmp, and fastbootlogo.bmp against the expected source logo. When
+--require-regbin is set, it also verifies LogoRegData.bin for the vendor
+SUNXI_TV_FASTLOGO path.
 USAGE
 }
 
@@ -31,6 +35,13 @@ while [ "$#" -gt 0 ]; do
     --source-logo)
       source_logo=${2:-}
       shift
+      ;;
+    --source-regbin)
+      source_regbin=${2:-}
+      shift
+      ;;
+    --require-regbin)
+      require_regbin=true
       ;;
     -h|--help)
       usage
@@ -52,6 +63,12 @@ fail() {
 
 [ -b "$device" ] || fail "not a block device: $device"
 [ -r "$source_logo" ] || fail "source logo is not readable: $source_logo"
+if [ -n "$source_regbin" ]; then
+  [ -r "$source_regbin" ] || fail "source register table is not readable: $source_regbin"
+fi
+if [ "$require_regbin" = true ] && [ -z "$source_regbin" ]; then
+  fail '--require-regbin requires --source-regbin FILE'
+fi
 command -v losetup >/dev/null 2>&1 || fail 'losetup is required'
 
 first_partition_start=$(partx -g -o START "$device" 2>/dev/null | awk 'NF { print $1; exit }')
@@ -144,6 +161,12 @@ mount -o ro "$loopdev" "$mount_dir"
 for file in bootlogo.bmp boot.bmp boot1.bmp fastbootlogo.bmp; do
   cmp "$source_logo" "$mount_dir/$file"
 done
+if [ "$require_regbin" = true ]; then
+  cmp "$source_regbin" "$mount_dir/LogoRegData.bin"
+fi
 
 printf 'SD boot-resource validation passed.\n'
 sha256sum "$mbr_path" "$fat_path" "$source_logo"
+if [ -n "$source_regbin" ]; then
+  sha256sum "$source_regbin"
+fi

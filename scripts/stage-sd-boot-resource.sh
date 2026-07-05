@@ -3,6 +3,7 @@ set -euo pipefail
 
 device=/dev/mmcblk1
 source_logo=/boot/logo.bmp
+source_regbin=
 backup_dir=/var/cache/orangepi4pro-images/bootloader-backups
 logical_offset=40960
 mbr_copies=4
@@ -16,14 +17,14 @@ usage() {
 Stage a minimal Allwinner SD boot-resource area for U-Boot logo loading.
 
 Usage:
-  scripts/stage-sd-boot-resource.sh [--device /dev/mmcblk1] [--source-logo FILE] [--yes]
+  scripts/stage-sd-boot-resource.sh [--device /dev/mmcblk1] [--source-logo FILE] [--source-regbin FILE] [--yes]
 
 Defaults to dry-run mode. In write mode, this script:
   - backs up the reserved SD range it will modify;
   - writes four 16 KiB Allwinner softw411 MBR copies at absolute sector 40960;
   - writes a FAT16 boot-resource filesystem starting at absolute sector 41088;
-  - copies bootlogo.bmp, boot.bmp, boot1.bmp, and fastbootlogo.bmp into that
-    filesystem;
+  - copies bootlogo.bmp, boot.bmp, boot1.bmp, fastbootlogo.bmp, and, when
+    provided, LogoRegData.bin into that filesystem;
   - verifies the written MBR magic, FAT label, and logo files by readback.
 
 It never writes boot0, TOC1/U-Boot, SPI/MTD, NVMe, partition tables, or the
@@ -40,6 +41,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --source-logo)
       source_logo=${2:-}
+      shift
+      ;;
+    --source-regbin)
+      source_regbin=${2:-}
       shift
       ;;
     --backup-dir)
@@ -69,6 +74,9 @@ fail() {
 
 [ -b "$device" ] || fail "not a block device: $device"
 [ -r "$source_logo" ] || fail "source logo is not readable: $source_logo"
+if [ -n "$source_regbin" ]; then
+  [ -r "$source_regbin" ] || fail "source register table is not readable: $source_regbin"
+fi
 command -v mkfs.vfat >/dev/null 2>&1 || fail 'mkfs.vfat is required'
 command -v losetup >/dev/null 2>&1 || fail 'losetup is required'
 
@@ -188,6 +196,9 @@ install -m 0644 "$source_logo" "$mount_dir/bootlogo.bmp"
 install -m 0644 "$source_logo" "$mount_dir/boot.bmp"
 install -m 0644 "$source_logo" "$mount_dir/boot1.bmp"
 install -m 0644 "$source_logo" "$mount_dir/fastbootlogo.bmp"
+if [ -n "$source_regbin" ]; then
+  install -m 0644 "$source_regbin" "$mount_dir/LogoRegData.bin"
+fi
 sync
 umount "$mount_dir"
 losetup -d "$loopdev"
@@ -195,6 +206,7 @@ loopdev=
 
 printf 'device=%s\n' "$device"
 printf 'source_logo=%s\n' "$source_logo"
+printf 'source_regbin=%s\n' "${source_regbin:-none}"
 printf 'logical_offset_sectors=%s\n' "$logical_offset"
 printf 'mbr_start_absolute_sector=%s\n' "$mbr_start_absolute"
 printf 'mbr_copies=%s\n' "$mbr_copies"
@@ -204,6 +216,9 @@ printf 'resource_sectors=%s\n' "$resource_sectors"
 printf 'resource_end_absolute_sector=%s\n' "$resource_end_absolute"
 printf 'first_partition_start_sector=%s\n' "$first_partition_start"
 sha256sum "$mbr_path" "$fat_path" "$source_logo"
+if [ -n "$source_regbin" ]; then
+  sha256sum "$source_regbin"
+fi
 
 if [ "$dry_run" = true ]; then
   printf 'dry_run=true\n'
@@ -236,6 +251,9 @@ mount "$loopdev" "$mount_dir"
 for file in bootlogo.bmp boot.bmp boot1.bmp fastbootlogo.bmp; do
   cmp "$source_logo" "$mount_dir/$file"
 done
+if [ -n "$source_regbin" ]; then
+  cmp "$source_regbin" "$mount_dir/LogoRegData.bin"
+fi
 umount "$mount_dir"
 losetup -d "$loopdev"
 loopdev=

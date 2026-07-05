@@ -13,7 +13,7 @@ usage() {
 Inspect an Orange Pi 4 Pro TOC1 package for bootloader visual-path risk.
 
 Usage:
-  scripts/validate-boot-package-visual-path.sh --package FILE [--profile report|safe-baseline|script-first] [--device /dev/mmcblk1]
+  scripts/validate-boot-package-visual-path.sh --package FILE [--profile report|safe-baseline|script-first|fastlogo-scriptfirst] [--device /dev/mmcblk1]
 
 Profiles:
   report         Print package metadata and visual-path string findings only.
@@ -21,6 +21,10 @@ Profiles:
                 and no known unsafe display-reinit paths.
   script-first  Require script-first scan order, AW DRM logo support, and no
                 known unsafe display-reinit paths.
+  fastlogo-scriptfirst
+                Require script-first scan order, the vendor direct-register
+                fastlogo path, the local fastlogo diagnostic marker, and no
+                AW DRM logo path or known unsafe display-reinit paths.
 
 When --device is provided, the script also verifies that the SD TOC1 slot at
 bs=8192 seek=2050 byte-matches the package.
@@ -62,8 +66,8 @@ done
 [ -n "$package" ] || fail '--package is required'
 [ -f "$package" ] || fail "package not found: $package"
 case "$profile" in
-  report|safe-baseline|script-first) ;;
-  *) fail "--profile must be report, safe-baseline, or script-first" ;;
+  report|safe-baseline|script-first|fastlogo-scriptfirst) ;;
+  *) fail "--profile must be report, safe-baseline, script-first, or fastlogo-scriptfirst" ;;
 esac
 
 tmpdir=$(mktemp -d)
@@ -103,6 +107,7 @@ script_scan_count=$( (grep -a -F -o "$script_scan" "$uboot_item" || true) | wc -
 has_aw_drm=false
 has_bootgui=false
 has_fastlogo=false
+has_fastlogo_diag=false
 has_unsafe=false
 
 if grep -a -Fq 'sunxi_show_logo' "$uboot_item"; then
@@ -111,8 +116,11 @@ fi
 if grep -a -Eq 'boot_gui_init|boot_gui_test|show_bmp_on_fb' "$uboot_item"; then
   has_bootgui=true
 fi
-if grep -a -Eq 'fastbootlogo.bmp|start to display fastbootlogo' "$uboot_item"; then
+if grep -a -Eq 'LogoRegData.bin|create_fastlogo_inst|display_fastlogo|bootlogo.bmp' "$uboot_item"; then
   has_fastlogo=true
+fi
+if grep -a -Fq 'opi_fastlogo_diag' "$uboot_item"; then
+  has_fastlogo_diag=true
 fi
 
 unsafe_strings=(
@@ -139,6 +147,7 @@ printf 'script_first_scan_count=%s\n' "$script_scan_count"
 printf 'has_aw_drm_sunxi_show_logo=%s\n' "$has_aw_drm"
 printf 'has_bootgui_symbols=%s\n' "$has_bootgui"
 printf 'has_fastlogo_strings=%s\n' "$has_fastlogo"
+printf 'has_fastlogo_diag=%s\n' "$has_fastlogo_diag"
 
 for unsafe in "${unsafe_strings[@]}"; do
   if grep -a -Fq "$unsafe" "$uboot_item"; then
@@ -185,6 +194,13 @@ case "$profile" in
     [ "$script_scan_count" = 1 ] || fail 'script-first requires exactly one script-first scan order'
     [ "$stock_scan_count" = 0 ] || fail 'script-first must not contain stock extlinux-first scan order'
     [ "$has_aw_drm" = true ] || fail 'script-first requires AW DRM sunxi_show_logo support'
+    ;;
+  fastlogo-scriptfirst)
+    [ "$script_scan_count" = 1 ] || fail 'fastlogo-scriptfirst requires exactly one script-first scan order'
+    [ "$stock_scan_count" = 0 ] || fail 'fastlogo-scriptfirst must not contain stock extlinux-first scan order'
+    [ "$has_fastlogo" = true ] || fail 'fastlogo-scriptfirst requires vendor fastlogo strings'
+    [ "$has_fastlogo_diag" = true ] || fail 'fastlogo-scriptfirst requires opi_fastlogo_diag marker'
+    [ "$has_aw_drm" = false ] || fail 'fastlogo-scriptfirst must not contain AW DRM sunxi_show_logo support'
     ;;
 esac
 

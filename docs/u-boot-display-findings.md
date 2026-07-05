@@ -1,5 +1,58 @@
 # U-Boot Display Findings
 
+2026-07-05 fastlogo isolation pass:
+
+- The current running root is NVMe Ubuntu on
+  `/dev/nvme0n1p3` / UUID
+  `eb86cfeb-60c7-4513-bc69-f6d28e9d561b`.
+- Readback of the installed SD TOC1 slot at `bs=8192 skip=2050` is a
+  script-first AW_DRM package, not the vendor stock SD or vendor stock NVMe
+  package. The readback file is:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/current-installed-sd-toc1-readback-full.fex`
+- Installed SD TOC1 readback SHA-256:
+  `caf7fad850121aee79c509612ac54b837df17ef0b01cc2debbed6f5bbde4cdb8`
+- Installed SD U-Boot item SHA-256:
+  `d7f30047205eac09a323d06053cd69eb1b2f98f0ee3f00ec4e4ff0fe23093df8`
+- Visual-path validation reports script-first scan order, AW_DRM
+  `sunxi_show_logo`, no local fastlogo diagnostic marker, and no currently
+  blocked unsafe HDMI reinit strings.
+- The live NVMe and SD `orangepiEnv.txt` files were reset to the conservative
+  non-visual path:
+  `bootmenu_first=false`, `selector_visual_test=none`,
+  `selector_logo_preinit=false`, and `selector_diag_force_bootm=false`.
+  This preserves the known NVMe default boot while source work continues.
+- Source review found a separate vendor direct-register logo path behind
+  `CONFIG_SUNXI_TV_FASTLOGO`. It calls
+  `create_fastlogo_inst("bootlogo.bmp", "bootloader", "LogoRegData.bin",
+  "bootloader")`, then writes display registers from `LogoRegData.bin`.
+- `CONFIG_SUNXI_TV_FASTLOGO` cannot be linked together with AW_DRM in this
+  vendor tree because both paths define `load_file` and `sunxi_bmp_display`.
+  The new `orangepi4pro-fastlogo.fragment` isolates the fastlogo path by
+  disabling AW_DRM, DM video, and PWM backlight. Patch
+  `0045-guard-drm-kernel-para-flush.patch` guards the AW_DRM-only kernel
+  parameter flush for that profile.
+- `scripts/build-vendor-uboot.sh --fastlogo-scriptfirst --clean` now builds a
+  fastlogo/script-first candidate without installing or flashing anything.
+- Offline fastlogo package candidate:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-fastlogo-scriptfirst.fex`
+- Candidate SHA-256:
+  `51b913e22126a67659432f13587447b9542208446dbd4220d35ae3f9fe6d249f`
+- Candidate U-Boot item SHA-256:
+  `8245a8f47c9db20f93e7ea18e1123e62e6cb87536809a3f12d24cca63572f949`
+- `scripts/validate-boot-package-visual-path.sh --profile
+  fastlogo-scriptfirst` verifies that package has script-first scan order,
+  fastlogo strings, the `opi_fastlogo_diag` marker, no AW_DRM
+  `sunxi_show_logo`, and no blocked unsafe visual path strings.
+- `LogoRegData.bin` was not found under `/home/orangepi`,
+  `/var/cache/orangepi4pro-images`, or `/usr/lib`. The valid local
+  boot-resource backup from 2026-07-05 contains only `bootlogo.bmp`,
+  `boot.bmp`, and `boot1.bmp`; earlier boot-resource backups were zeroed.
+- Do not install the fastlogo candidate as a visual fix until a valid
+  `LogoRegData.bin` is extracted from an official factory image or generated
+  from verified register state. Without that asset, the candidate can at best
+  report `opi_fastlogo_diag=fastlogo=create-fail` or `display-fail`; it is not
+  expected to restore a visible bootloader splash.
+
 2026-07-04 recovery baseline:
 
 - The board is booting NVMe Ubuntu through extlinux with

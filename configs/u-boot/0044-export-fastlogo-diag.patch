@@ -1,0 +1,24 @@
+diff --git a/board/sunxi/board_common.c b/board/sunxi/board_common.c
+--- a/board/sunxi/board_common.c
++++ b/board/sunxi/board_common.c
+@@ -747,15 +747,22 @@ int board_late_init(void)
+ #ifdef CONFIG_SUNXI_TV_FASTLOGO
+ 	struct fastlogo_t *p_fastlogo = NULL;
+ 	if (work_mode == WORK_MODE_BOOT || work_mode == WORK_MODE_CARD_UPDATE ||
+ 	    work_mode == WORK_MODE_CARD_PRODUCT) {
++		int fastlogo_ret = -1;
+ 		p_fastlogo =
+ 			create_fastlogo_inst("bootlogo.bmp", "bootloader",
+ 					     "LogoRegData.bin", "bootloader");
+ 		if (p_fastlogo) {
+-			p_fastlogo->display_fastlogo(p_fastlogo);
++			fastlogo_ret = p_fastlogo->display_fastlogo(p_fastlogo);
++			if (fastlogo_ret == 0)
++				env_set("opi_fastlogo_diag", "fastlogo=display-ok");
++			else
++				env_set("opi_fastlogo_diag", "fastlogo=display-fail");
++		} else {
++			env_set("opi_fastlogo_diag", "fastlogo=create-fail");
+ 		}
+ 	}
+ #endif
