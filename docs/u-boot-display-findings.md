@@ -2429,3 +2429,43 @@ delivering a valid visible signal until Linux later performs its full
   pre-Linux high-contrast selector; if it remains black, the Linux cmdline
   diagnostics should still identify whether the DTB aliases changed HDMI/TCON
   lock state.
+- Reboot result: failed visually. The system booted NVMe through
+  `bootchooser=bootgui-selector-nvme`, proving `opi_bootselect` ran. U-Boot
+  diagnostics changed from stale/zero TCON state to locked HDMI/TCON state:
+  `tcon24000000`, `phy2e`, `stat03`, `lock70`, and `gcp01`, but the display
+  remained black until Linux/desktop. This narrows the next test away from
+  HDMI lock and toward the actual visible content path.
+
+2026-07-05 embedded selector-logo plus DTB alias candidate:
+
+- Rationale: the DTB alias package made U-Boot report a locked HDMI path, but
+  the direct framebuffer selector still was not visible. This candidate keeps
+  the same input-capable `opi_bootselect` path and the DTB aliases, while also
+  replacing the vendor embedded `boot.bmp` with the static selector image. The
+  first visible surface should therefore use the vendor `sunxi_show_logo`
+  embedded-BMP path instead of relying only on the later framebuffer plane
+  commit.
+- Build command:
+  `BUILD_ROOT=/home/orangepi/u-boot-dtb-alias-logo-test scripts/build-vendor-uboot.sh --selector-logo --early-display-secondpass --clean`
+- Artifact:
+  `/home/orangepi/u-boot-dtb-alias-logo-test/artifacts/bootmenu-selector-logo/u-boot-sun60iw2p1.bin`
+- Artifact SHA-256:
+  `409336b58bf50cca6b9f87c63b9c9634b1b0831aec53585f4fd2a4cce64d5d8d`
+- Embedded selector BMP:
+  `/home/orangepi/u-boot-dtb-alias-logo-test/artifacts/bootmenu-selector-logo/selector-boot.bmp`
+- Embedded selector BMP SHA-256:
+  `bc3dcbd5a046168fe3b463b66da96cddafd84c0779c804f308b5d788c46bcb03`
+- Candidate package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-early-display-secondpass-opibootselect-dtb-alias-embedded-logo.fex`
+- Package SHA-256:
+  `4958de9eafb8efb9af337c743ee759ed86d8be0605be4994ea15154059ba1ed1`
+- Validation requirement: package validation must pass with
+  `--profile script-first --require-hdmi-dtb-aliases --require-embedded-boot-bmp`.
+  The package must contain `opi_bootselect`, the high-contrast selector marker,
+  SNPS diagnostics, framebuffer commit diagnostics, the embedded `boot.bmp`
+  path, the DTB clock aliases, and none of the blocked recycle/reinit paths.
+- Intended next boot test: stage this package and reboot after settlement. A
+  successful visual result is any pre-Linux selector image that remains visible
+  long enough for keyboard selection. If the static embedded selector appears
+  but live highlight updates do not, keep this path and make selection feedback
+  static/timeout-safe before pursuing dynamic redraw.
