@@ -1,0 +1,44 @@
+diff --git a/drivers/video/drm/sunxi_drm_hdmi.c b/drivers/video/drm/sunxi_drm_hdmi.c
+--- a/drivers/video/drm/sunxi_drm_hdmi.c
++++ b/drivers/video/drm/sunxi_drm_hdmi.c
+@@ -826,6 +826,8 @@ int _sunxi_drm_hdmi_enable(struct sunxi_drm_connector *conn,
+ 	bool link_locked = false;
+ 	char secondpass_diag[96];
++	const char *force_secondpass_env = NULL;
++	bool force_secondpass = false;
+ 
+ 	_sunxi_drv_hdmi_clock_on(hdmi);
+ 
+@@ -872,13 +874,23 @@ int _sunxi_drm_hdmi_enable(struct sunxi_drm_connector *conn,
+ 	first_phy_stat0 = phy_stat0;
+ 	first_mc_lockon = mc_lockon;
++	force_secondpass_env = env_get("opi_hdmi_force_secondpass");
++	force_secondpass = force_secondpass_env &&
++		(!strcmp(force_secondpass_env, "1") ||
++		 !strcmp(force_secondpass_env, "true") ||
++		 !strcmp(force_secondpass_env, "yes"));
++
+ 	snprintf(secondpass_diag, sizeof(secondpass_diag),
+ 		 "hdmisp=skip,firstphy%02x,firstlock%02x", first_phy_stat0, first_mc_lockon);
+ 	env_set("opi_hdmi_secondpass", secondpass_diag);
+ 
+-	if (!link_locked) {
+-		hdmi_wrn("hdmi first enable unlocked phy%02x lock%02x; second pass\n",
+-			 phy_stat0, mc_lockon);
++	if (!link_locked || force_secondpass) {
++		hdmi_wrn("hdmi %s second pass phy%02x lock%02x\n",
++			 force_secondpass ? "forced" : "unlocked", phy_stat0, mc_lockon);
+ 
+ 		ret = _sunxi_drv_hdmi_disable(hdmi);
+@@ -913,8 +925,9 @@ int _sunxi_drm_hdmi_enable(struct sunxi_drm_connector *conn,
+ 		hdmi_wrn("hdmi second pass result phy%02x lock%02x\n",
+ 			 phy_stat0, mc_lockon);
+ 		snprintf(secondpass_diag, sizeof(secondpass_diag),
+-			 "hdmisp=run,firstphy%02x,firstlock%02x,secondphy%02x,secondlock%02x",
+-			 first_phy_stat0, first_mc_lockon, phy_stat0, mc_lockon);
++			 "hdmisp=%s,firstphy%02x,firstlock%02x,secondphy%02x,secondlock%02x",
++			 force_secondpass ? "force" : "run", first_phy_stat0,
++			 first_mc_lockon, phy_stat0, mc_lockon);
+ 		env_set("opi_hdmi_secondpass", secondpass_diag);
+ 	}
+ 
