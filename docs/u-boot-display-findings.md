@@ -1,5 +1,48 @@
 # U-Boot Display Findings
 
+2026-07-05 post-recovery source audit:
+
+- The live boot arguments after the dual-path framebuffer selector showed
+  `bootchooser=bootgui-selector-nvme` and
+  `opibootselect=drm_direct_r1_v1_1024x600`. This proves the U-Boot selector
+  command ran, drew through both the DRM framebuffer path and the U-Boot video
+  framebuffer fallback, and selected the NVMe default. The physical screen was
+  still black before Linux, so this is a scanout/display-path failure rather
+  than selector control-flow failure.
+- The SD-card boot0 slot byte-matches Orange Pi's packaged
+  `boot0_sdcard.fex` from
+  `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64`. The current
+  boot0 binary is therefore not the reason the pre-Linux splash disappeared.
+- Orange Pi's packaged SD and NVMe TOC1 packages contain `u-boot`, `monitor`,
+  and `scp` items only. There is no separate TOC1 `logo` item to restore from
+  these packages.
+- Official source comparison used:
+  `https://github.com/orangepi-xunlong/u-boot-orangepi.git`
+  `v2018.05-sun60iw2`
+  `b791be842935b27268ae3d00e943a9075495f30a`, and
+  `v2018.05-a733`
+  `baff7429abdb082133a4e9ffe9d27febb9d39924`. The A733 and sun60iw2 source
+  paths are aligned for the relevant AW_DRM and board-common early-logo code.
+- The community NVMe repo
+  `https://github.com/CarterPerez-dev/orangepi-4-pro-nvme-fix.git`
+  was inspected at `fe4c31ec0115d3f2493905be07426f36f666aab5`. It documents
+  PCIe/NVMe behavior and does not contain a bootloader display fix.
+- A pure `CONFIG_BOOT_GUI` / `CONFIG_DISP2_SUNXI` build was tested offline and
+  failed to compile because the sun60iw2 vendor tree's disp2 code has no
+  platform branch for `CONFIG_MACH_SUN60IW2` (`#error "undefined platform!!!"`).
+  Do not treat the legacy disp2 BootGUI path as available until that platform
+  support is ported or proven from another vendor drop.
+- The AW_DRM `bootgui-hpd-delay` build mode was also tested offline. Kconfig
+  dropped `CONFIG_BOOT_GUI`, producing an AW_DRM artifact under a misleading
+  BootGUI name. The build script now refuses that mode unless
+  `CONFIG_BOOT_GUI=y` survives Kconfig; use `logo-delay-diag` for AW_DRM
+  `sunxi_show_logo` delay experiments. It also refuses `bootgui-scriptfirst`
+  for sun60iw2 because the disp2 BootGUI platform support is not present.
+- Patch `0006-draw-selector-on-all-drm-displays.patch` now records the last
+  framebuffer id/address/size inside the DRM display loop before exporting
+  `opibootcommit=...`; the previous diagnostic read `state` after list
+  iteration and could report a bogus framebuffer id.
+
 2026-07-05 fastlogo isolation pass:
 
 - The current running root is NVMe Ubuntu on

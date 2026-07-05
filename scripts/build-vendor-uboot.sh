@@ -961,6 +961,27 @@ if [ "$mode" = bootgui-scriptfirst ] || [ "$mode" = bootgui-hpd-delay ]; then
     CROSS_COMPILE="$cross_compile" ./scripts/kconfig/merge_config.sh .config "$fragment" "$bootgui_mode_fragment"
   )
   make "${make_common[@]}" olddefconfig
+  if [ "$mode" = bootgui-scriptfirst ]; then
+    grep -q '^CONFIG_BOOT_GUI=y$' "$work_dir/.config" || {
+      printf 'ERROR: bootgui-scriptfirst requires CONFIG_BOOT_GUI=y after Kconfig merge\n' >&2
+      printf '       sun60iw2 currently drops this unless the DISP2 platform support builds.\n' >&2
+      exit 1
+    }
+    grep -q '^CONFIG_DISP2_SUNXI=y$' "$work_dir/.config" || {
+      printf 'ERROR: bootgui-scriptfirst requires CONFIG_DISP2_SUNXI=y after Kconfig merge\n' >&2
+      exit 1
+    }
+    if grep -q '^CONFIG_MACH_SUN60IW2=y$' "$work_dir/.config"; then
+      printf 'ERROR: bootgui-scriptfirst is not buildable for sun60iw2 in this vendor tree\n' >&2
+      printf '       DISP2 has no CONFIG_MACH_SUN60IW2 platform branch; use AW_DRM modes instead.\n' >&2
+      exit 1
+    fi
+  fi
+  if [ "$mode" = bootgui-hpd-delay ] && ! grep -q '^CONFIG_BOOT_GUI=y$' "$work_dir/.config"; then
+    printf 'ERROR: bootgui-hpd-delay did not enable CONFIG_BOOT_GUI; refusing misleading artifact\n' >&2
+    printf '       use logo-delay-diag for an AW_DRM sunxi_show_logo HPD-delay build.\n' >&2
+    exit 1
+  fi
 fi
 
 artifact_mode=$mode
