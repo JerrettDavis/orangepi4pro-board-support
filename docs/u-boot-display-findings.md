@@ -2177,6 +2177,33 @@ delivering a valid visible signal until Linux later performs its full
   `scripts/build-vendor-uboot.sh --early-display-secondpass --clean`
 - New source patch:
   `configs/u-boot/0036-hdmi-enable-second-pass-if-unlocked.patch`
+2026-07-05 factory SD TOC1 isolation test:
+
+- Problem statement: the previous bootloader attempt still did not produce a
+  visible pre-Linux display and one later attempt required external WSL
+  recovery. The current live system is back on NVMe, and the installed SD
+  boot0 at 8 KiB byte-matches the vendor `boot0_sdcard.fex`.
+- New evidence: the earliest saved boot-resource windows were all zero-filled.
+  The synthetic FAT16 boot-resource area was introduced by our tests, so the
+  missing factory "initializing boot loader" display is not explained by losing
+  an original FAT logo partition.
+- Next bounded test: install the unmodified vendor SD TOC1 package
+  `/usr/lib/linux-u-boot-current-orangepi4pro_1.0.6_arm64/boot_package.fex`
+  into the SD TOC1 slot only. This package passes the `safe-baseline` visual
+  validator, contains the stock extlinux-first scan order, contains AW DRM
+  `sunxi_show_logo`, and contains none of the blocked unsafe display-reinit
+  strings or hashes.
+- Rationale: every script-first stock and rebuilt package has failed visually.
+  Testing the unmodified vendor SD package isolates whether the length-preserving
+  scan-order patch itself suppresses the early factory display path. The current
+  NVMe and SD `extlinux.conf` files both default to the NVMe Ubuntu entry with a
+  20 second prompt, so the package should still boot NVMe by default while
+  restoring the closest available factory U-Boot behavior.
+- Safety gate: before reboot, the SD TOC1 slot must byte-match the unmodified
+  vendor package, both repos must be clean and pushed, and settlement validation
+  must pass. This test does not write boot0, SPI/MTD, NVMe, partition tables, or
+  filesystems.
+
 - Patch behavior: after the first normal `_sunxi_drv_hdmi_enable()` call, read
   HDMI PHY and MC lock status. If the transmitter is still unlocked, drop only
   the HDMI/TCON clock path with `sunxi_tcon_mode_exit()` and
