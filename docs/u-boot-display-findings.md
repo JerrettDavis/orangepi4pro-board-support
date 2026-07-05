@@ -2204,3 +2204,34 @@ delivering a valid visible signal until Linux later performs its full
   `bootchooser=uboot-visual-colorbar-ok`. If the display remains black, the
   cmdline HDMI diagnostics should still show whether the second pass changed
   `phy`, `stat`, or `lock`.
+- Reboot result: failed visually. U-Boot executed the colorbar path and booted
+  NVMe Ubuntu with `bootchooser=uboot-visual-colorbar-ok`, but the screen stayed
+  black until the OS. The pre/post U-Boot diagnostics were unchanged:
+  `top20_e8193000`, `tv49000000`, `pix49000`, `tmds49000`, but
+  `phy00,stat00,rst00,lock00,vid00,gcp00`. Linux later locked the SNPS PHY
+  during its own mode-change path at about 3.69s. The remaining gap is therefore
+  below TCON/TOP PHY mode selection: U-Boot still does not bring the SNPS HDMI
+  core/PHY to a live locked state.
+
+2026-07-04 HDMI second-pass evidence candidate:
+
+- New diagnostic-only patch:
+  `configs/u-boot/0037-export-hdmi-enable-secondpass-diag.patch`
+- Purpose: preserve the exact `_sunxi_drv_hdmi_enable()` result and whether the
+  `_sunxi_drm_hdmi_enable()` second pass ran in U-Boot environment variables:
+  `opi_hdmi_drv_diag` and `opi_hdmi_secondpass`.
+- The images boot script now appends those variables to the kernel command line
+  when present. This keeps the next reboot bootloader-only and bounded, but
+  turns a black-screen failure into direct evidence about whether the second
+  pass reached `sunxi_hdmi_config()`, what it returned, and what PHY/MC state it
+  left behind.
+- Artifact SHA-256:
+  `0bdf03e62c2ff60e53fcb1a3403781726e20b435889f308f16616e7e11a66705`
+- Candidate package:
+  `/var/cache/orangepi4pro-images/build/boot-package-candidates/boot_package_sd-early-display-secondpass-diag.fex`
+- Package SHA-256:
+  `4b239d2096dd0b704146c9234d8b65b9cf52f30a8fea14ea2a253caa6c7f5d67`
+- Validation result: `validate-boot-package-visual-path.sh --profile
+  script-first` passed. The package still has exactly one script-first scan
+  order, AW DRM logo support, fastlogo strings, and none of the known unsafe
+  display recycle/reinit strings.
