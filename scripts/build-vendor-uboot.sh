@@ -489,6 +489,7 @@ if [ "$mode" = early-display-secondpass ]; then
   for patch in \
     "$display_diag_patch" \
     "$hdmi_diag_patch" \
+    "$display_fbtest_patch" \
     "$display_mode_patch" \
     "$hdmi_mode_clock_patch" \
     "$hdmi_bus_clock_patch" \
@@ -513,6 +514,7 @@ if [ "$mode" = early-display-secondpass ]; then
   for marker in \
     sunxi_drm_env \
     sunxi_hdmi_env \
+    'sunxi_drm fbtest' \
     '1024x600' \
     'mode_rate && (clk_rate == 0 || clk_rate == 24000000)' \
     'hdmi drv bus clock enable' \
