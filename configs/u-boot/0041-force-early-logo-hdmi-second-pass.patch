@@ -1,0 +1,21 @@
+diff --git a/board/sunxi/board_common.c b/board/sunxi/board_common.c
+--- a/board/sunxi/board_common.c
++++ b/board/sunxi/board_common.c
+@@ -670,9 +670,11 @@ int board_env_late_init(void)
+ 
+ #ifdef CONFIG_AW_DRM
+ #ifdef CONFIG_SUNXI_POWER
+-		if (!gd->chargemode)
++		if (!gd->chargemode) {
++			env_set("opi_hdmi_force_secondpass", "1");
+ 			run_command("sunxi_show_logo", 0);
+-#else
++			env_set("opi_hdmi_force_secondpass", "0");
++		}
++#else
++		env_set("opi_hdmi_force_secondpass", "1");
+ 		run_command("sunxi_show_logo", 0);
++		env_set("opi_hdmi_force_secondpass", "0");
+ #endif
+ #endif /* CONFIG_AW_DRM */
+ 
