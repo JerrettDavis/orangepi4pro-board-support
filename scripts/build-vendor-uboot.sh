@@ -561,6 +561,9 @@ if [ "$mode" = early-display-secondpass ]; then
     "$hdmi_force_early_logo_second_pass_patch" \
     "$hdmi_preserve_second_pass_mode_set_patch" \
     "$hdmi_normalize_disp_info_patch" \
+    "$bootgui_selector_patch" \
+    "$bootgui_selector_all_displays_patch" \
+    "$high_contrast_selector_patch" \
     "$early_display_delay_patch"; do
     if [ ! -r "$patch" ]; then
       printf 'ERROR: early-display-secondpass patch not readable: %s\n' "$patch" >&2
@@ -588,6 +591,9 @@ if [ "$mode" = early-display-secondpass ]; then
     opi_hdmi_secondpass \
     opi_hdmi_drv_diag \
     opi_snps_phy_diag \
+    opi_bootselect \
+    opibootselect=drm_direct \
+    'BOOTLOADER TEST SCREEN' \
     opi_hdmi_force_secondpass \
     'hdmisp=%s' \
     'env_set("opi_hdmi_force_secondpass", "1")' \
@@ -603,6 +609,7 @@ if [ "$mode" = early-display-secondpass ]; then
       && ! grep -q "$marker" "$work_dir/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/phy_top.c" \
       && ! grep -q "$marker" "$work_dir/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/phy_snps.c" \
       && ! grep -q "$marker" "$work_dir/drivers/video/drm/sunxi_device/hardware/lowlevel_hdmi20/dw_mc.c" \
+      && ! grep -q "$marker" "$work_dir/cmd/opi_bootselect.c" \
       && ! grep -q "$marker" "$work_dir/board/sunxi/board_common.c"; then
       printf 'ERROR: early-display-secondpass marker missing: %s\n' "$marker" >&2
       exit 1
